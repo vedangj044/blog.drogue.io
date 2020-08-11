@@ -128,11 +128,12 @@ let pa12 = gpioa.pa12;
 
 At this point, `pa11` and `pa12` are of type `PA11<Input<Floating>>` and
 `PA12<Input<Floating>>` respectively. Two floating digital input pins is
-*not* sufficient for usage as a serial point.
+*not* sufficient for usage as a serial point. In their initial natural state,
+I could use them to sense voltage changes, as digital inputs, but I cannot
+harness the internal USART peripheral that may be attached to them.
 
-
-So next, I configure the processor to know I want to use them for USART6 instead 
-of any of the other usages they could have. The `into_alternative_af8()` is 
+So next, I configure the processor to know I specifically want to use them for USART6 
+instead of any of the other usages they could have. The `into_alternative_af8()` is 
 how I tell the processor (through the PAC) that I intend to use them as USART6:
 
 ```rust
@@ -167,7 +168,7 @@ Now, though, our `serial` implements the `Read<...>` and `Write<...>` traits
 from `embedded-hal` and can be handed off to an actual device driver that
 is written purely from the point-of-view of `embedded-hal`. 
 
-The device driver doesn't need to know which vendors silicon I'm using, just that
+The device driver doesn't need to know which vendor's silicon I'm using, just that
 there's now an object that can be written to and read from.
 
 # Finally...
