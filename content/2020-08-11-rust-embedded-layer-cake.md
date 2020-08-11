@@ -172,6 +172,3 @@ Embedded coding is hard, especially when you're not stupendously experienced doi
 On the other hand, using Rust provides a nice set of abstractions and a _ton_ of guardrails
 to prevent you from flying off the cliff of correct code.
 
-
-
-
