@@ -101,7 +101,7 @@ that can be provided using _zero cost abstractions_.
 
 Take, for instance, on the STM32F401 chip, one of the serial port thingies (USART6) 
 can be connected to a couple of different sets of pins. Since each chip tends to ultimately
-have more peripherals than can be surfaces through physical pins, a lot of pins can
+have more peripherals than can be surfaced through physical pins, a lot of pins can
 perform one of several functions. 
 
 In the case of USART6, the transmission line can be attached to pin `PA11` or `PC6`.
