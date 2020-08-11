@@ -44,7 +44,7 @@ octets from your code to the serial bus and to receive octets from the serial bu
 into your code. Additional registers are used to communicate if errors have 
 occurred while attempting to move data across (overruns, parity errors, noise).
 
-The reference manuals for process describe the memory location and semantics
+The reference manuals for processors describe the memory location and semantics
 of each bit/byte of each register for each peripheral. 
 
 ![USART registers](/images/usart-regs.png)
