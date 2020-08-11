@@ -86,7 +86,7 @@ The `embedded-hal` is purely a crate of Rust _traits_, and by itself is not func
 Humans create a _HAL implementation_ for a specific bit of silicon using the
 generated _PAC_ in order to provide a friendly way of interacting with different chips.
 
-For instance, there's the [stm32f4xx](https://docs.rs/embedded-hal/0.2.4/embedded_hal/serial/index.html)
+For instance, there's the [stm32f4xx-hal](https://crates.io/crates/stm32f4xx-hal)
 HAL crate which has been lovingly hand-crafted, using the [stm32f PAC](https://crates.io/crates/stm32f4)
 in order to safely configure and use a chip from the STM32F4 family of silicon.
 
@@ -112,7 +112,7 @@ will _not_ allow you to use it to further configure the USART6 serial port thing
 In my case, I've wired up my serial port device to pins `PA11` for transmission (tx)
 and `PA12` for receiving (rx).
 
-First I get the `PAC` representation of the GPIO pins, the little bits of metal sticking
+First I get the `HAL` representation of the GPIO pins, the little bits of metal sticking
 out of my board:
 
 ```rust
@@ -139,6 +139,10 @@ how I tell the processor (through the PAC) that I intend to use them as USART6:
 let tx_pin = gpioa.pa11.into_alternate_af8();
 let rx_pin = gpioa.pa12.into_alternate_af8();
 ```
+
+Behind the scenes, the HAL is using the PAC to twiddle the appropriate bits
+in the appropriate registers to configure the pointy bits of metal sticking
+out of the board and what the processor thinks I intend to do with them.
 
 Now, the types of `tx_pin` and `rx_pin` are `PA11<Alternate<AF8>>` and
 `<PA12<Alternate<AF8>>` respectively. I can't use them a simple digital I/O
