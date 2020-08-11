@@ -137,8 +137,8 @@ instead of any of the other usages they could have. The `into_alternative_af8()`
 how I tell the processor (through the PAC) that I intend to use them as USART6:
 
 ```rust
-let tx_pin = gpioa.pa11.into_alternate_af8();
-let rx_pin = gpioa.pa12.into_alternate_af8();
+let tx_pin = pa11.into_alternate_af8();
+let rx_pin = pa12.into_alternate_af8();
 ```
 
 Behind the scenes, the HAL is using the PAC to twiddle the appropriate bits
