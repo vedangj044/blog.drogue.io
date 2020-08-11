@@ -54,7 +54,7 @@ would be... challenging.
 
 # Peripheral Access Crates (PAC)
 
-Thankfully, each producer of ARM Cortex-M chips also ship a related XML files
+Thankfully, some producers of ARM Cortex-M chips also ship a related XML file
 called an SVD (System View Descriptor). These files take the prose information
 from the reference manuals and makes it machine-readable. Tooling in the Rust
 community, called [svd2rust](https://crates.io/crates/svd2rust) can consume
