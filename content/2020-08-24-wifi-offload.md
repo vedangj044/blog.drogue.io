@@ -11,7 +11,7 @@ Unfortunately, it's handiness stops as soon as you want to communicate with TCP 
 There also exists another board (using an Xtensa chip) called an [ESP8266](https://www.digikey.com/product-detail/en/sparkfun-electronics/WRL-13678/1568-1235-ND/5725944).
 
 The ESP is nice in that it contains a stock firmware that responds to Hayes AT commands (like a modem) and can do networky types of things.
-Then again, the ESP uses Hayse AT commands, which are ASCII-like, across a serial port, which is decidedly less networky feeling from the Rust end of the stick.
+Then again, the ESP uses Hayes AT commands, which are ASCII-like, across a serial port, which is decidedly less networky feeling from the Rust end of the stick.
 
 # `embedded-nal` (or [Drogue-Network](https://crates.io/crates/drogue-network))
 
@@ -31,7 +31,7 @@ I'm initially only concerned wtih TCP, even though the crate also defines a UDP 
 ```rust
 /// This trait is implemented by TCP/IP stacks. You could, for example, have an implementation
 /// which knows how to send AT commands to an ESP8266 WiFi module. You could have another implemenation
-/// which knows how to driver the Rust Standard Library's `std::net` module. Given this trait, you can how
+/// which knows how to driver the Rust Standard Library's `std::net` module. Given this trait, you can
 /// write a portable HTTP client which can work with either implementation.
 pub trait TcpStack {
 	/// The type returned when we create a new TCP socket
@@ -84,16 +84,16 @@ From the point-of-view of the `TcpStack` trait, both of those types are opaque.
 
 ## Interior mutability
 
-As we know from Rust, methods that take `&self` are immutable, while those that that `&mut self` are mutable.
+As we know from Rust, methods that take `&self` are immutable, while those that take `&mut self` are mutable.
 This trait defines purely non-mutable (in relation to `self`) methods.  
 But surely the implementation needs to do some book-keeping when opening/connecting/closing sockets, which
 sounds like mutability.
 
-This is sure sign we probably need [*interior mutability*](https://doc.rust-lang.org/book/ch15-05-interior-mutability.html).
+This is a sure sign we probably need [*interior mutability*](https://doc.rust-lang.org/book/ch15-05-interior-mutability.html).
 
 Rust gives us the `RefCell<T>` wrapper that allows just that. 
 Calling an immutable method on an immutable object is allowed, and internally the method, _at runtime_ gets a
-mutable reference to _something_ that does mutable type of work.
+mutable reference to _something_ that does mutable work.
 
 We'll return to that in a moment.
 
@@ -104,7 +104,7 @@ Before we can implement a `TcpStack`, we need to be able to just have a conversa
 As we discussed in our last post, this involves some board-specific setup, where we:
 
 * get the transmit and receive pins, and convince our F401RE that we want to use them for USART communication.
-* get our pins which are connected to the ESP's _enable_ and _reset_ pins, and convince our F401RE that we want to be able to push the high or pull them low.
+* get our pins which are connected to the ESP's _enable_ and _reset_ pins, and convince our F401RE that we want to be able to push them high or pull them low.
 * use some of those pins to setup a `Serial` port for USART6 running at 115,200bps.
 * enable notifications for the RXNE (receive register _not empty_; data is ready for us) interrupt.
 * and then split the serial port into 2 halfs: transmit and receive.
@@ -138,8 +138,8 @@ let (tx, rx) = serial.split();
 ```
 
 But right now all we have is a generic serial port pushing bytes back and forth, without any semantics applied.
-Thankfully, we've created an ESP8266 driver, though, which can apply some semantics and gives us an easier-to-user way to interact.
-The driver crate gives us an `initialize(...)` free function which consumes both halfs of the serial port, along with the _enable_ and _reset_ pins, *plus two queues*.
+Thankfully, we've created an ESP8266 driver, though, which can apply some semantics and gives us an easier-to-use way to interact.
+The driver crate gives us an `initialize(...)` free function which consumes both halves of the serial port, along with the _enable_ and _reset_ pins, *plus two queues*.
 
 Why two queues?
 
@@ -148,7 +148,7 @@ The ESP communicates over the serial port in 2 ways:
 1. command/response
 2. unsolicited messages
 
-These responses and messages will be created from within the an interrupt handler from bytes that have arrived and been interpreted, but consumed elsewhere.
+These responses and messages will be created from within the interrupt handler from bytes that have arrived and been interpreted, but consumed elsewhere.
 Using a [heapless](https://crates.io/crates/heapless) `Queue` allows us to have lock-free `Producer` and `Consumer` to shuffle messages between the contexts.
 
 
@@ -165,12 +165,13 @@ let (adapter, ingress) = initialize(
 ).unwrap();
 ```
 
-Now we are holding two objects: an _adapter_ which is the user-facing client for interacting with the adapter, an an _ingress_ which can be used from interrupt service routines to process inbound bytes.
+Now we are holding two objects: an `adapter` which is the user-facing
+client for interacting with the esp8266 wifi adapter, an an _ingress_ which can be used from interrupt service routines to process inbound bytes.
 
 # Wiring up the interrupts
 
 As noted above, we're using RTIC. 
-RTIC provides a place to do your initialization, and then an easy way to wire up interrupt handlers and scheduled tasks, with priorities.
+RTIC provides a place to do your initialization, and an easy way to wire up interrupt handlers and scheduled tasks, with priorities.
 It also provides a way to share resources between these different contexts. 
 So at the end of our initializtion process, we stuff the objects into the shared-resources object and return it:
 
@@ -203,7 +204,7 @@ In this case, for _every byte that arrives_ at potentially 115,200bps.
 
 ## Process bytes
 
-Since the ingressing of bytes needs to be fast, all it does it puts it on a buffer and returns. 
+Since the ingressing of bytes needs to be fast, all it does is put it on a buffer and return. 
 But at some point, we need to digest those bytes and determine if they are meaningful, or if we're still waiting on more.
 
 For this digesting, we set up a recurring scheduled task, which we schedule the first time from our initialization,
@@ -242,7 +243,7 @@ it with a `None`.
 Next we use it directly to connect to our WiFi. Behind the scenes, calling `'join(...)` for instance
 will transmit an AT command, and the response will come back through the USART interrupt and be digested
 by the digest task, _seemingly_ in a multi-threaded sort of way. It's not really multi-threaded, the processor
-just keeps iterrupting our idle code and itself until a response occurs and our idle code is allow to proceed.
+just keeps iterrupting our idle code and itself until a response occurs and our idle code is allowed to proceed.
 
 _Finally_ we can `into_network_stack()` our adapter, which _consumes_ the adapter and gives us back a 
 `TcpStack` implementation. Hooray!
@@ -373,7 +374,7 @@ and we return our `TcpSocket` structure with the recently-opened `link_id`.
 # Summary
 
 There's a lot going on to simply open a socket, but when you do embedded, you have to bring a lot
-to the table, But like an onion (or a parfait), there's layers upon layers, and thankfully as you
+to the table, and like an onion (or a parfait), there's layers upon layers, and thankfully as you
 move up the stack, they get simpler and more reusable.
 
 Anyhow, if this seems interesting, here're some links:
