@@ -13,10 +13,9 @@ build_search_index = true
 
 theme = "feather"
 
+generate_rss = true
+
 [extra]
 # Put all your custom variables here
 
 feather_header_image = "/wood.jpg"
-
-
-
