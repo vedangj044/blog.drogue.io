@@ -1,2 +1,8 @@
+# Zola generated
+public/
+
+# vi
 *.swp
-public
+
+# IntelliJ
+.idea/
