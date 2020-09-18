@@ -1,15 +1,23 @@
 all: build
 
+# we need to automate that list
+build: static/images/esp-programmer/esp.webp
+
+# for the main image, we put in a bit more effort
+# copy base images from assets
 build: static/wood.3840w.jpg static/wood.1920w.jpg static/wood.768w.jpg
 build: static/wood.3840w.webp static/wood.1920w.webp static/wood.768w.webp
 
-# copy base images from assets
 static/wood.3840w.jpg: assets/wood.jpg
 	convert $< -shave "0x30%" -resize "3840" $@
 static/wood.1920w.jpg: assets/wood.jpg
 	convert $< -shave "0x30%" -resize "1920" $@
 static/wood.768w.jpg: assets/wood.jpg
 	convert $< -shave "0x30%" -resize "768" $@
+
+# rule to resize by 50%, used for photos
+%.1x.jpg: %.2x.jpg
+	convert $< -resize 50% $@
 
 # rule to convert from jpeg to webp
 %.webp: %.jpg
