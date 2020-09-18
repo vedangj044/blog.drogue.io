@@ -12,8 +12,8 @@
 
 {% block header_image %}
 <picture>
-    <source media="" type="image/webp" srcset="/wood.1x.webp, /wood.2x.webp 2x">
-    <source media="" type="image/jpeg" srcset="/wood.1x.webp, /wood.2x.webp 2x">
-    <img class="header-image ignore-js" src="/wood.1x.jpg" class="ignore-js" alt="Header image">
+    <source type="image/webp" srcset="/wood.768w.webp 768w, /wood.1920w.webp 1920w, /wood.3840w.webp 3840w">
+    <source type="image/jpeg" srcset="/wood.768w.jpg 768w, /wood.1920w.jpg 1920w, /wood.3840w.jpg 3840w">
+    <img class="header-image ignore-js" src="/wood.768w.jpg" alt="Header image">
 </picture>
 {% endblock header_image %}

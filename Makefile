@@ -1,15 +1,16 @@
 all: build
 
-build: static/wood.2x.jpg static/wood.1x.jpg
-build: static/wood.2x.webp static/wood.1x.webp
+build: static/wood.3840w.jpg static/wood.1920w.jpg static/wood.768w.jpg
+build: static/wood.3840w.webp static/wood.1920w.webp static/wood.768w.webp
 
-# copy base image from assets
-static/wood.2x.jpg: assets/wood.jpg
-	convert $< -shave "0x30%" $@
+# copy base images from assets
+static/wood.3840w.jpg: assets/wood.jpg
+	convert $< -shave "0x30%" -resize "3840" $@
+static/wood.1920w.jpg: assets/wood.jpg
+	convert $< -shave "0x30%" -resize "1920" $@
+static/wood.768w.jpg: assets/wood.jpg
+	convert $< -shave "0x30%" -resize "768" $@
 
-# pattern to shrink to 50%
-%.1x.jpg: %.2x.jpg
-	convert $< -resize 50% $@
 # rule to convert from jpeg to webp
 %.webp: %.jpg
 	cwebp -m 6 $< -o $@
