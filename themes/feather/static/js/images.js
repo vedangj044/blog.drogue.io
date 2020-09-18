@@ -5,7 +5,7 @@ var images = (function() {
 		//
 		// Returns: Array<Element>
 		findAllImages: function() {
-			return document.querySelectorAll("IMG");
+			return document.querySelectorAll("IMG:not(.ignore-js)");
 		},
 
 		// strips away a parent `p` tag from an image which is often 

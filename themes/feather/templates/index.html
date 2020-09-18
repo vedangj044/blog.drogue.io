@@ -36,7 +36,9 @@
     <body>
 
     <a href="/">
+      {% block header_image %}
       <div class='header-image' style='background-image: url({% if config.extra.feather_header_image %}{{ config.extra.feather_header_image }}{% else %}/theme_images/default.gif{% endif %});'></div>
+      {% endblock header_image %}
     </a>
 
     {% block content %}
