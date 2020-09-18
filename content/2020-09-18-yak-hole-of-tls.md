@@ -56,21 +56,23 @@ You can install an allocator to give you a heap, but then you also have to insta
 
 How do we solve this?
 
-We fork [alloc-cortex-m](https://crates.io/crates/alloc-cortex-m), and a bit of the Rust alloc crates.
+We fork [alloc-cortex-m](https://crates.io/crates/alloc-cortex-m), and a bit of the Rust alloc crates [into our tree](https://github.com/drogue-iot/drogue-tls/tree/master/drogue-tls/src/platform).
 
 The only reason we have to fork them is because using them directly triggers `rustc` into being convinced we have a global allocator and need to install the allocation error handler, which as noted above, is nightly-only.
 
 #### Allocation in Rust
 
 Rust does allocation using a `Layout` which basically embodies the size of memory you request, along with adjustments for accomodate memory alignment for your platform.
-Rust also wants the _exact same layout_ when you deallocate memory, unlike C's `free(...)` which only needs a pointer to the memory.
+Rust also wants the _exact same layout_ passed in when you deallocate memory, unlike C's `free(...)` which only needs a pointer to the memory, because it put the layout information in a header of the initial allocation.
 
-How do we solve that? The same way C does.
+How do we solve that? The same way C does, by not expecting the caller to track the layout information, but by scribbling it into the start of the allocation ourselves, also.
 
-If a request for 16 bytes is made, we add 8 more bytes to that number, and actually ask for 24 bytes of memory. In the first two `usize` slots (4 bytes apiece, times two, for our 8 extra), we scribble in the total size and the alignment so we can reconstitute the `Layout`. We then return a pointer to the 9th byte to C, so it starts using memory *after* our 8-byte header.
+If mbedTLS needs 16 bytes allocated, it'll call `calloc(1, 16)` to ask for 1 chunk of 16 bytes.
+
+To that, we add 8 bytes for our book-keeping header, so the allocation will ultimately become 24 bytes. The extra 8 bytes track 2 `usize` slots for our book-keeping: 1 for the size of the allocation (24 bytes total) and one for the alignment requirements. Since our header takes the first 8 bytes, we return the pointer to the 9th byte, which starts the chunk of 16 bytes requested by the caller of `calloc(...)`.
 
 ```
-byte |0   |1   |2   |3   |4   |5   |6   |7   |8                      
+byte |0   |1   |2   |3   |4   |5   |6   |7   |8+
      |----|----|----|----|----|----|----|----|-----------------------
  use |alloc_size         |alignment          |handed back to caller  
 ```
@@ -85,7 +87,7 @@ So far we've glossed over how we _actually_ interface from Rust to C and back.
 
 The answer is [bindgen](https://crates.io/crates/bindgen), which consumes C header files and produces `unsafe` Rust bindings to the API. 
 
-Since Rust has no concept of `null`, but C pointers can certain be null, each pointer tends to get wrapped in a `Option` on the rust side.
+Since Rust has no concept of `null`, but C pointers can certainly be null, each pointer tends to get wrapped in a `Option` on the Rust side.
 
 We can use the `extern "C"` syntax to write a function in Rust that can be called from C with the appropriate calling conventions. 
 
