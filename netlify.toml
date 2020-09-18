@@ -1,9 +1,12 @@
-[Settings]
-  ID = "9ff270da-04ec-4b5e-bc00-a7738afdbbc8"
+[settings]
+ID = "9ff270da-04ec-4b5e-bc00-a7738afdbbc8"
 
-[Build]
-  Publish = ""
-  Functions = ""
+[build]
+publish = "public"
+command = "zola build"
 
 [build.environment]
 ZOLA_VERSION = "0.12.0"
+
+[context.deploy-preview]
+command = "zola build --base-url $DEPLOY_PRIME_URL"
