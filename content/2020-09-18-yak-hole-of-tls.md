@@ -186,7 +186,7 @@ It provides an associated function to initialize the system and it sets up the d
 
 Remember, we're doing this so we can put TLS on top of our TCP/IP connections.
 
-If you recall from a previous blogpost, we have created a TCP stack based on using an ESP8266 over our USART. 
+If you recall from a [previous blogpost](https://blog.drogue.io/wifi-offload/), we have created a TCP stack based on using an ESP8266 over our USART. 
 We're still doing that. 
 But now we'll initialize the TLS platform and wrap it around that network stack to give us a secure network stack.
 
@@ -234,3 +234,8 @@ let result = secure_network.write(&mut socket, b"GET / HTTP/1.1\r\nhost:192.168.
 And we're secure (roughly) in knowledge that our bytes to and from the far end are travelling over an encrypted connection.
 
 That was fun, yeah?
+
+# Next Steps
+
+* [Better entropy sources](https://twitter.com/bitshiftmask/status/1306776561123762176?s=20)
+* Certificate handling and validation for both sides of the conversation.
