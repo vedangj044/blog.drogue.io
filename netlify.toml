@@ -1,0 +1,9 @@
+[Settings]
+  ID = "9ff270da-04ec-4b5e-bc00-a7738afdbbc8"
+
+[Build]
+  Publish = ""
+  Functions = ""
+
+[build.environment]
+ZOLA_VERSION = "0.12.0"
