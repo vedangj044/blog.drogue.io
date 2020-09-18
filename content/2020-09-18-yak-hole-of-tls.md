@@ -226,7 +226,7 @@ let socket_addr = SocketAddr::new(
 );
 
 let mut socket = secure_network.connect(socket, socket_addr).unwrap();
-let result = secure_network.write(&mut socket, b"GET / HTTP/1.1\r\nhost:192.168.1.8\r\n\r\n").unwrap();
+let result = secure_network.write(&mut socket, b"GET / HTTP/1.1\r\nhost:192.168.1.220\r\n\r\n").unwrap();
 ```
 
 And we're secure (roughly) in knowledge that our bytes to and from the far end are travelling over an encrypted connection.
