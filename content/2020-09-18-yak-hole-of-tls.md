@@ -77,7 +77,7 @@ byte |0   |1   |2   |3   |4   |5   |6   |7   |8
 
 When `free(...)` is called with only a pointer from C code, we back-track 8 bytes, read out the size and alignment values and rebuild our `Layout` to shuffle on into Rust's allocator's `dealloc(...)` method.
 
-This allows us to avoid any external book-keeping, and just taking an extra 8 bytes onto the head of each allocation.
+This allows us to avoid any external book-keeping, and just tacking an extra 8 bytes onto the head of each allocation.
 
 ## Bindgen
 
@@ -110,7 +110,7 @@ And now we've _finally_ provided mbedTLS the ability to allocate and deallocate 
 
 When working with TLS and doing FFI in general, you need to be able to debug what's actually going on, particular in the two weeks you're banging your head on the table trying to figure out how it all works.
 Just like `calloc(...)` above, mbedTLS allows you to pass in a debug logging function. 
-The problem is that the things they debug logging function logs tend to be constructed using variants of `sprintf(...)`, which is a _variadic_ function, meaning it can take an unlimited number of arguments to populate the formatting string.
+The problem is that the things the debug logging function prints tend to be constructed using variants of `sprintf(...)`, which is a _variadic_ function, meaning it can take an unlimited number of arguments to populate the formatting string.
 
 For instance:
 
