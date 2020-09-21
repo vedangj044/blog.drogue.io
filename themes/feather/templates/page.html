@@ -5,23 +5,7 @@
   <section class="post">
   	<div class="title-and-info">
     	<h2>{{ page.title }}</h2>
-    	<div class="info">
-    		<span>{{ page.reading_time }} minute read</span>
-    		{% if page.date %}
-			<span class='divider'></span>
-			<span>{{ page.date | date(format="%d %B %Y") }}</span>
-    		{% endif %}
-    		{% if page.category %}
-			<span class='divider'></span>
-			{# link to page category if user is building categories #}
-			{% if config.generate_categories_pages %}
-			<span><a href="/categories/{{page.category}}">{{ page.category }}</a></span>
-			{% else %}
-			<span>{{ page.category }}</span>
-			{% endif %}
-    		{% endif %}
-    		
-    	</div>
+		{{ post_macros::post_info(page=page) }}
     </div>
   	<article>
   		{{ page.content | safe }}
