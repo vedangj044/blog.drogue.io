@@ -2,14 +2,16 @@
 title = "Down the Yak Hole of TLS"
 +++
 
-# Between Rust and TLS, there are a lot of yaks to shave
-
-**Warning: This will be a long and winding blogpost. Grab a cup of coffee.**
-
 We've recently gotten TLS functional for embedded systems in Rust. 
 TLS (Transport Layer Security) is one of the backbones to secure communications over TCP/IP, helping protect data in-flight between two parties.
 There's a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
 Let's dive in, shall we?
+
+<!-- more -->
+
+# Between Rust and TLS, there are a lot of yaks to shave
+
+**Warning: This will be a long and winding blogpost. Grab a cup of coffee.**
 
 # Never write a crypto library
 

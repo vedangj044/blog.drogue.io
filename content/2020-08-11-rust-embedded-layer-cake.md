@@ -2,11 +2,11 @@
 title = "Rust Embedded Layer Cake"
 +++
 
-# Rust, Embedded
-
 As noted in the first post, I'm working towards doing more IoT using Rust
 in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
 LLVM and can target quite a few different processors. 
+
+<!-- more -->
 
 # Instruction Sets & Processors
 

@@ -2,11 +2,11 @@
 title = "WiFi Offloading"
 +++
 
-# Setting the Scene
-
 My recent work has been around Cortex-M embedded development using Rust and [RTIC](https://rtic.rs/).
 I'm using a handy little development board in the form of the [STM Nucleo-F401RE](https://www.digikey.com/product-detail/en/stmicroelectronics/NUCLEO-F401RE/497-14360-ND/4695525).
 Unfortunately, it's handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.
+
+<!-- more -->
 
 There also exists another board (using an Xtensa chip) called an [ESP8266](https://www.digikey.com/product-detail/en/sparkfun-electronics/WRL-13678/1568-1235-ND/5725944).
 

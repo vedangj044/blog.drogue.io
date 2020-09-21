@@ -6,6 +6,8 @@ Getting started with an [ESP-01](https://en.wikipedia.org/wiki/ESP8266#Pinout_of
 things. At least if you are not used to embedded systems. It is a nice solution though to add Wi-Fi
 capabilities to an existing platform.
 
+<!-- more -->
+
 # The ESP-01
 
 I started out with my [STM32F723E-DISCOVERY](https://www.st.com/en/evaluation-tools/32f723ediscovery.html) board,

@@ -47,9 +47,8 @@
               <a class='header-link' href="{{ page.path }}">
                 <h3 class="title"> {{ page.title }} </h3>
               </a>
-              <p> 
-                {{ page.content | safe | striptags | truncate }} 
-              </p>
+
+              {{ page.summary | safe }}
 
                 {# TODO: modularize this so we don't repeat ourselves #}
               <div class='info'>
@@ -67,6 +66,8 @@
                     <span>{{ page.category }}</span>
                   {% endif %}
                 {% endif %}
+                  <span class="divider"></span>
+                  <a href="{{ page.path }}">Read more …</a>
               </div>
             </section>
           <hr/>
