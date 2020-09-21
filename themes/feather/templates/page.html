@@ -2,12 +2,12 @@
 
 {% block content %}
 <div class='container'>
-  <section class="post">
+  <section class="post" itemscope itemtype="http://schema.org/BlogPosting">
   	<div class="title-and-info">
-    	<h2>{{ page.title }}</h2>
+    	<h2 itemprop="name headline">{{ page.title }}</h2>
 		{{ post_macros::post_info(page=page) }}
     </div>
-  	<article>
+  	<article itemprop="articleBody">
   		{{ page.content | safe }}
   	</article>
   </section>

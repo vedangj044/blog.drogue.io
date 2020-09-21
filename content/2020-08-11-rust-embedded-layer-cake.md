@@ -1,5 +1,6 @@
 +++
 title = "Rust Embedded Layer Cake"
+extra.author = "bobmcwhirter"
 +++
 
 As noted in the first post, I'm working towards doing more IoT using Rust

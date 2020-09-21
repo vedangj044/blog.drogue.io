@@ -1,5 +1,6 @@
 +++
 title = "WiFi Offloading"
+extra.author = "bobmcwhirter"
 +++
 
 My recent work has been around Cortex-M embedded development using Rust and [RTIC](https://rtic.rs/).

@@ -1,0 +1,11 @@
+{% macro author(id) %}
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+{% if config.extra.authors[id] -%}
+    <span itemprop="name">{{ config.extra.authors[id].name }}</span>
+{%- else -%}
+{{ id }}
+{%- endif %}
+</span>
+
+{% endmacro author %}

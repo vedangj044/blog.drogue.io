@@ -1,11 +1,15 @@
+{% import "common.html" as common %}
+
 {% macro post_info(page,more=false) %}
 
 <div class="info">
 
     <span>{{ page.reading_time }} minute read</span>
+    <meta itemprop="wordCount" content="{{page.word_count}}">
+
     {% if page.date %}
         <span class='divider'></span>
-        <span>{{ page.date | date(format="%d %B %Y") }}</span>
+        <span itemprop="datePublished" content='{{page.date | date(format="%Y-%m-%d")}}'>{{ page.date | date(format="%d %B %Y") }}</span>
     {% endif %}
 
     {% if page.category %}
@@ -16,6 +20,11 @@
         {% else %}
             <span>{{ page.category }}</span>
         {% endif %}
+    {% endif %}
+
+    {% if page.extra.author %}
+        <span class="divider"></span>
+        <span>by {{ common::author(id=page.extra.author) }}</span>
     {% endif %}
 
     {% if more %}

@@ -44,12 +44,14 @@
     <div class="container">
       <div class="posts">
         {% for page in section.pages %}
-            <section>
+            <section itemscope itemtype="http://schema.org/BlogPosting">
               <a class='header-link' href="{{ page.path }}">
-                <h3 class="title"> {{ page.title }} </h3>
+                <h3 class="title" itemprop="name headline"> {{ page.title }} </h3>
               </a>
 
-              {{ page.summary | safe }}
+                <div itemprop="articleSummary">
+                {{ page.summary | safe }}
+                </div>
 
               {{ post_macros::post_info(page=page,more=true) }}
             </section>

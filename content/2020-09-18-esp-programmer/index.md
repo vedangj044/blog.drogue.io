@@ -1,5 +1,6 @@
 +++
 title = "Creating an ESP programmer"
+extra.author = "ctron"
 +++
 
 Getting started with an [ESP-01](https://en.wikipedia.org/wiki/ESP8266#Pinout_of_ESP-01) isn't one of the easiest
