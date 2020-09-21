@@ -1,7 +1,7 @@
 all: build
 
 # we need to automate that list
-build: static/images/esp-programmer/esp.webp
+build: content/2020-09-18-esp-programmer/esp.webp
 
 # for the main image, we put in a bit more effort
 # copy base images from assets

@@ -21,8 +21,8 @@ board.
 
 <figure>
 <picture>
-    <source type="image/webp" srcset="/images/esp-programmer/esp.webp">
-    <img style="max-width: 900px" class="ignore-js" src="/images/esp-programmer/esp.jpg" alt="ESP-01 on STM32F723E-DISCOVERY">
+    <source type="image/webp" srcset="esp.webp">
+    <img style="max-width: 900px" class="ignore-js" src="esp.jpg" alt="ESP-01 on STM32F723E-DISCOVERY">
 </picture>
 </figure>
 
