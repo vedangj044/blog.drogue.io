@@ -19,4 +19,15 @@
 {%- elif page.summary -%}
 {{ page.summary | striptags }}
 {%- endif %}
-{%- endmacro %}
+{%- endmacro description %}
+
+{# generate absolute URL for image #}
+{% macro abs_url(page, url) -%}
+{% if ( url is starting_with("http://") ) or (url is starting_with("https://")) -%}
+{{ url | safe }}
+{%- elif url is starting_with("/") -%}
+{{ get_url(path=url) | safe }}
+{%- else -%}
+{{ get_url(path=page.path ~ url,trailing_slash=true) | safe }}
+{%- endif %}
+{%- endmacro abs_url %}

@@ -36,11 +36,11 @@
 <meta name="twitter:description" content="{{ common::description(page=page) }}">
 
 {%- if page.extra.twitter.image %}
-<meta name="twitter:image" content="{{ get_url(path=page.extra.twitter.image) | safe }}">
+<meta name="twitter:image" content="{{ common::abs_url(page=page,url=page.extra.twitter.image) | safe }}">
 {%- elif page.extra.image %}
-<meta name="twitter:image" content="{{ get_url(path=page.extra.image) | safe }} ">
+<meta name="twitter:image" content="{{ common::abs_url(page=page,url=page.extra.image) | safe }} ">
 {%- else %}
-<meta name="twitter:image" content='{{ get_url(path="/default_social_image.png") | safe }}'>
+<meta name="twitter:image" content='{{ common::abs_url(page=page,url="/default_social_image.png") | safe }}'>
 {% endif %}
 {%- if page.extra.twitter.image_alt %}
 <meta name="twitter:image:alt" content="{{ page.extra.twitter.image_alt }}">
@@ -55,11 +55,11 @@
 <meta property="og:description" content="{{ common::description(page=page) }}">
 
 {%- if page.extra.og.image %}
-<meta property="og:image" content="{{ get_url(path=page.extra.og.image) | safe  }}">
+<meta property="og:image" content="{{ common::abs_url(page=page,url=page.extra.og.image) | safe  }}">
 {%- elif page.extra.image %}
-<meta property="og:image" content="{{ get_url(path=page.extra.image) | safe  }}">
+<meta property="og:image" content="{{ common::abs_url(page=page,url=page.extra.image) | safe  }}">
 {%- else %}
-<meta property="og:image" content='{{ get_url(path="/default_social_image.png") | safe  }}'>
+<meta property="og:image" content='{{ common::abs_url(page=page,url="/default_social_image.png") | safe  }}'>
 {% endif %}
 
 {%- endblock meta_head %}
