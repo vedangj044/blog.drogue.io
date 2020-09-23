@@ -28,6 +28,6 @@
 {%- elif url is starting_with("/") -%}
 {{ get_url(path=url) | safe }}
 {%- else -%}
-{{ get_url(path=page.path ~ url,trailing_slash=true) | safe }}
+{{ get_url(path=page.path ~ url) | safe }}
 {%- endif %}
 {%- endmacro abs_url %}
