@@ -36,11 +36,11 @@
 <meta name="twitter:description" content="{{ common::description(page=page) }}">
 
 {%- if page.extra.twitter.image %}
-<meta name="twitter:image" content="{{ get_url(path=page.extra.twitter.image) }}">
+<meta name="twitter:image" content="{{ get_url(path=page.extra.twitter.image) | safe }}">
 {%- elif page.extra.image %}
-<meta name="twitter:image" content="{{ get_url(path=page.extra.image) }}">
+<meta name="twitter:image" content="{{ get_url(path=page.extra.image) | safe }} ">
 {%- else %}
-<meta name="twitter:image" content='{{ get_url(path="/default_social_image.png") }}'>
+<meta name="twitter:image" content='{{ get_url(path="/default_social_image.png") | safe }}'>
 {% endif %}
 {%- if page.extra.twitter.image_alt %}
 <meta name="twitter:image:alt" content="{{ page.extra.twitter.image_alt }}">
@@ -51,15 +51,15 @@
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="{{ config.title }}">
 <meta property="og:title" content="{{ page.title }}">
-<meta property="og:url" content="{{ get_url(path=page.path) }}">
+<meta property="og:url" content="{{ get_url(path=page.path) | safe  }}">
 <meta property="og:description" content="{{ common::description(page=page) }}">
 
 {%- if page.extra.og.image %}
-<meta property="og:image" content="{{ get_url(path=page.extra.og.image) }}">
+<meta property="og:image" content="{{ get_url(path=page.extra.og.image) | safe  }}">
 {%- elif page.extra.image %}
-<meta property="og:image" content="{{ get_url(path=page.extra.image) }}">
+<meta property="og:image" content="{{ get_url(path=page.extra.image) | safe  }}">
 {%- else %}
-<meta property="og:image" content='{{ get_url(path="/default_social_image.png") }}'>
+<meta property="og:image" content='{{ get_url(path="/default_social_image.png") | safe  }}'>
 {% endif %}
 
 {%- endblock meta_head %}

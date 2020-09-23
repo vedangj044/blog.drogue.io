@@ -25,7 +25,7 @@
       {% endif %}
 
       {% if config.generate_feed %}
-        <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ get_url(path=config.feed_filename, trailing_slash=false) }}">
+        <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ get_url(path=config.feed_filename, trailing_slash=false) | safe  }}">
       {% endif %}
 
         {% block extra_head %}{% endblock extra_head %}
