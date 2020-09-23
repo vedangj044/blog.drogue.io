@@ -1,3 +1,4 @@
+{# render author information, including schema information #}
 {% macro author(id) %}
 
 <span itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -9,3 +10,13 @@
 </span>
 
 {% endmacro author %}
+
+{# return the description of the page #}
+
+{% macro description(page) -%}
+{% if page.description -%}
+{{ page.description }}
+{%- elif page.summary -%}
+{{ page.summary | striptags }}
+{%- endif %}
+{%- endmacro %}

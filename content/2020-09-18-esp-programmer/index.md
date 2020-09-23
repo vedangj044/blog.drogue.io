@@ -1,6 +1,8 @@
 +++
 title = "Creating an ESP programmer"
 extra.author = "ctron"
+extra.image = "esp.webp"
+extra.image_alt = "ESP-01 mounted on STM32F723E-DISCOVERY board"
 +++
 
 Getting started with an [ESP-01](https://en.wikipedia.org/wiki/ESP8266#Pinout_of_ESP-01) isn't one of the easiest
