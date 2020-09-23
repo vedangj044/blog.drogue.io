@@ -1,5 +1,6 @@
 +++
 title = "Creating an ESP programmer"
+description = "Creating an ESP-01 programmer in Rust, by bridging two UART interfaces on an STM32F723E-DISCOVERY board"
 extra.author = "ctron"
 extra.image = "esp.webp"
 extra.image_alt = "ESP-01 mounted on STM32F723E-DISCOVERY board"
