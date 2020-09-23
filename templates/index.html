@@ -8,12 +8,13 @@
         object-fit: cover;
     }
 </style>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 {% endblock extra_head %}
 
 {% block header_image %}
 <picture>
-    <source type="image/webp" srcset="/wood.768w.webp 768w, /wood.1920w.webp 1920w, /wood.3840w.webp 3840w">
-    <source type="image/jpeg" srcset="/wood.768w.jpg 768w, /wood.1920w.jpg 1920w, /wood.3840w.jpg 3840w">
-    <img class="header-image ignore-js" src="/wood.768w.jpg" alt="Header image">
+    <source type="image/webp" srcset="/header.768w.webp 768w, /header.1920w.webp 1920w, /header.3840w.webp 3840w">
+    <source type="image/jpeg" srcset="/header.768w.jpg 768w, /header.1920w.jpg 1920w, /header.3840w.jpg 3840w">
+    <img class="header-image ignore-js" src="/header.768w.jpg" alt="Header image">
 </picture>
 {% endblock header_image %}
