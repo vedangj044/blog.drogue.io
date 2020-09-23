@@ -43,9 +43,9 @@
 <meta name="twitter:image" content='{{ get_url(path="/default_social_image.png") }}'>
 {% endif %}
 {%- if page.extra.twitter.image_alt %}
-<meta name="twitter:image" content="{{ page.extra.twitter.image_alt }}">
+<meta name="twitter:image:alt" content="{{ page.extra.twitter.image_alt }}">
 {%- elif page.extra.image_alt %}
-<meta name="twitter:image" content="{{ page.extra.image_alt }}">
+<meta name="twitter:image:alt" content="{{ page.extra.image_alt }}">
 {% endif %}
 
 <meta property="og:type" content="article" />
