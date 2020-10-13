@@ -162,7 +162,7 @@ Every response starts with a `\r\n` sequence, which we did not put in either rul
 Then we pick with `join` or `join_error` and assign it to the `response` variable.
 Then we finally match the always trailing `prompt` and return the matches response.
 
-Why doesn't think work?
+Why doesn't this work?
 
 Because `nom` allows for streaming parsing, knowing that maybe it didn't completely parse something this time, but once you add a few more bytes, maybe it'll match next time.
 
