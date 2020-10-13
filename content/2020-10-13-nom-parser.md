@@ -220,7 +220,7 @@ In this case, we know the slice we parsed was complete, so we can ignore the `_r
 
 # More complex
 
-We've also published an uber-tiny [`drogue-nom-utils` crate](https://crates.io/crates/drogue-nom-utils) crate to provide helper and utility parsers that we have used more than once.
+We've also published an uber-tiny [`drogue-nom-utils` crate](https://crates.io/crates/drogue-nom-utils) to provide helper and utility parsers that we have used more than once.
 
 Some of these adapters will transmit a response like the following to indicate a certain amount of data is available for a certain connection:
 
