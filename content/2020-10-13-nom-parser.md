@@ -10,7 +10,7 @@ While LL(k) and LALR are common types of parsers, the [nom crate](https://crates
 
 # Parser Combinators
 
-As their name implies, _parser combinators_ are things that can parse inputs, and can be combined to parser even more complex input.
+As their name implies, _parser combinators_ are things that can parse inputs, and can be combined to parse even more complex input.
 Similar to LL(k) type of parsing, small atoms are built up into larger, more capable parsing.
 
 # Why we parse
