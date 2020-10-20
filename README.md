@@ -105,3 +105,5 @@ URL will be converted into an absolute, with the page being the parent. For exam
 * The base URL is `http://foo.bar/`
 
 Then the resulting image URL is: `http://foo.bar/2020-01-01-foo/image.png`.
+
+
