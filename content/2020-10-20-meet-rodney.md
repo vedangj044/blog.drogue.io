@@ -13,7 +13,7 @@ The word "drogue" has several meanings.
 It's French for "drug" which is probably not the best connotation.
 The flunkies in _A Clockwork Orange_ were called "droogs" which is also not great.
 
-But there's also a *storm drogue* which is used to add stability to vessels in the sea.
+But there's also a [*storm drogue*](https://en.wikipedia.org/wiki/Drogue) which is used to add stability to vessels in the sea.
 
 ![Storm Drogue](/images/stormdrogue.svg)
 
