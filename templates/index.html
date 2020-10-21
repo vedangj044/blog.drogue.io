@@ -3,9 +3,12 @@
 {% block extra_head %}
 <style>
     .header-image {
-        height: 33vh;
-        width: 100%;
-        object-fit: cover;
+        max-height: 33vh;
+        height: inherit;
+        min-height: inherit;
+        object-fit: contain;
+        object-position: left center;
+        background-color: #8cc73f;
     }
 </style>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">

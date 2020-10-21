@@ -133,16 +133,13 @@ blockquote {
 // Links and Selections
 a {
 	font-weight: bold;
-	color: #ed1249;
+	color: #ab182d;
 	text-decoration: none;
 }
 
-::selection {
-	background: rgba(237, 18, 73,0.5); /* WebKit/Blink Browsers */
+::selection, ::-moz-selection {
+	background: rgba(#f3ce3d, 0.5);
 }
-::-moz-selection {
-	background: rgba(237, 18, 73,0.5); /* Gecko Browsers */
-}	
 
 // Code
 pre, code {
