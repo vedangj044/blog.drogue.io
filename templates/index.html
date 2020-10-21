@@ -12,5 +12,9 @@
 {% endblock extra_head %}
 
 {% block header_image %}
-<img class="header-image ignore-js" src="/blog_header.svg" type="image/svg+xml" alt="Header image" width="100%">
+<picture>
+    <source type="image/webp" srcset="/header.768w.webp 768w, /header.1920w.webp 1920w">
+    <source type="image/jpeg" srcset="/header.768w.png 768w, /header.1920w.png 1920w">
+    <img class="header-image ignore-js" src="/header.768w.png" alt="Header image">
+</picture>
 {% endblock header_image %}
