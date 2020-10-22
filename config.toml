@@ -1,6 +1,7 @@
 # The URL the site will be built for
 base_url = "https://blog.drogue.io/"
 title = "Drogue IoT"
+description = "IoT & Rust"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
