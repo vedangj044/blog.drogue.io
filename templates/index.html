@@ -8,7 +8,7 @@
         min-height: inherit;
         object-fit: contain;
         object-position: left center;
-        background-color: #8cc73f;
+        background-color: #98c353;
     }
 </style>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -16,8 +16,6 @@
 
 {% block header_image %}
 <picture>
-    <source type="image/webp" srcset="/header.768w.webp 768w, /header.1920w.webp 1920w">
-    <source type="image/jpeg" srcset="/header.768w.png 768w, /header.1920w.png 1920w">
-    <img class="header-image ignore-js" src="/header.768w.png" alt="Header image">
+    <img class="header-image ignore-js" src="/header.svg" alt="Header image">
 </picture>
 {% endblock header_image %}
