@@ -1,0 +1,42 @@
+{% import "common.html" as common %}
+
+{% macro post_info(page,more=false) %}
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>{{ page.reading_time }} minute read</span>
+        <meta itemprop="wordCount" content="{{page.word_count}}">
+    </div>
+
+    {% if page.date %}
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='{{page.date | date(format="%Y-%m-%d")}}'>{{ page.date | date(format="%_d %B %Y") }}</span>
+        </div>
+    {% endif %}
+
+    {% if page.category %}
+        <div class="post-info-item">
+        {% if config.generate_categories_pages %}
+            <span><a href="/categories/{{page.category | slugify }}">{{ page.category }}</a></span>
+        {% else %}
+            <span>{{ page.category }}</span>
+        {% endif %}
+        </div>
+    {% endif %}
+
+    {% if page.extra.author %}
+        <div class="post-info-item">
+        <span>by {{ common::author(id=page.extra.author) }}</span>
+        </div>
+    {% endif %}
+
+    {% if more %}
+        <div class="post-info-item">
+        <a href="{{ page.path }}">Read&nbsp;more&nbsp;…</a>
+        </div>
+    {% endif %}
+
+</div>
+
+{% endmacro post_info %}

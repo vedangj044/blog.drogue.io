@@ -1,21 +1,100 @@
-{% extends "feather/templates/index.html" %}
+{% import "post_macros.html" as post_macros %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ get_url(path='/main.css', trailing_slash=false) | safe  }}">
 
-{% block extra_head %}
-<style>
-    .header-image {
-        max-height: 33vh;
-        height: inherit;
-        min-height: inherit;
-        object-fit: contain;
-        object-position: left center;
-        background-color: #8cc73f;
-    }
-</style>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-{% endblock extra_head %}
+    <title>{% block title %}{{ config.title }}{% endblock title %}</title>
 
-{% block header_image %}
-<picture>
-    <img class="header-image ignore-js" src="/header.svg" alt="Header image">
-</picture>
-{% endblock header_image %}
+    {% if config.generate_feed %}
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ get_url(path=config.feed_filename, trailing_slash=false) | safe  }}">
+    {% endif %}
+
+    {% block extra_head %}
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="{{ get_url(path='/favicon.svg', trailing_slash=false) | safe  }}">
+    {% endblock extra_head %}
+
+    {% block meta_head %}
+    <meta name="description" content="{{config.description}}">
+    <meta name="og:description" content="{{config.description}}">
+    <meta name="og:image" content="{{ get_url(path='/default_social_image.png') | safe }}">
+    <meta name="twitter:description" content="{{config.description}}">
+    <meta name="twitter:image" content="{{ get_url(path='/default_social_image.png') | safe }}">
+    {% endblock meta_head %}
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="{{ get_url(path='/') | safe }}">
+      <img class="header-image" src="{{ get_url(path='/header.svg', trailing_slash=false) | safe }}" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  {% block content %}
+  <div class="container">
+    <div class="posts">
+      {% for page in section.pages %}
+      <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+          <div class="content">
+          <h2 class="title is-2 is-spaced" itemprop="name headline">
+            <a href="{{ page.path }}">
+            {{ page.title }}
+            </a>
+          </h2>
+          </div>
+
+        <div class="content">
+          <div itemprop="articleSummary">
+            {{ page.summary | safe }}
+          </div>
+        </div>
+
+        <div class="content has-text-grey">
+          {{ post_macros::post_info(page=page,more=true) }}
+        </div>
+
+      </div>
+      <hr/>
+
+      {% endfor %}
+    </div>
+  </div>
+  {% endblock content %}
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="{{ get_url(path='/default.js', trailing_slash=false) | safe  }}"></script>
+
+</body>
+
+</html>

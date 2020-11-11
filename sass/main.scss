@@ -1,0 +1,47 @@
+
+$red: #e20027;
+$blue: #0167aa;
+
+$link: $red;
+$title-color: $blue;
+$content-heading-color: $blue;
+
+$body-font-size: 1.25em;
+
+@import "../node_modules/bulma/bulma";
+
+.title a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.post-info {
+  display: block;
+}
+
+.post-info-item {
+  display: inline-block;
+}
+
+.post-info-item ~ .post-info-item:before {
+  content: '·';
+  padding-left: .5rem;
+  padding-right: .5rem;
+}
+
+.post-content img {
+  width: 100%;
+}
+
+.toc {
+  position: sticky;
+  top: 1rem;
+}
+
+.video {
+  text-align: center;
+}
+
+html {
+  scroll-behavior: smooth
+}

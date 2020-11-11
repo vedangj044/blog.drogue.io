@@ -1,5 +1,8 @@
 all: build
 
+build:
+	npm install
+
 # we need to automate that list
 build: content/2020-09-18-esp-programmer/esp.webp
 

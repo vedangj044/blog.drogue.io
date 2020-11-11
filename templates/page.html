@@ -1,22 +1,52 @@
 {% extends "index.html" %}
 
 {% block content %}
-<div class='container'>
-  <section class="post" itemscope itemtype="http://schema.org/BlogPosting">
-  	<div class="title-and-info">
-    	<h2 itemprop="name headline">{{ page.title }}</h2>
-		{{ post_macros::post_info(page=page) }}
-    </div>
-  	<article itemprop="articleBody">
-  		{{ page.content | safe }}
-  	</article>
-  </section>
 
-  {% if config.extra.feather_disqus_code %}
-    {{ config.extra.feather_disqus_code | safe }}
-  {% endif %}
+<div class="columns">
+  <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+  <article itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="content">
+      <h1 class="title is-size-2" itemprop="name headline">{{ page.title }}</h1>
+      <div class="subtitle has-text-grey">
+      {{ post_macros::post_info(page=page) }}
+      </div>
+    </div>
+
+    <hr/>
+
+    <div class="content post-content" itemprop="articleBody">
+      {{ page.content | safe }}
+    </div>
+  </article>
+  </div>
+
+  <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop px-5">
+    <div class="box toc">
+      <div class="title is-size-3"><a href="#">Table of contents</a></div>
+      <nav class="menu">
+        <ul class="menu-list">
+          {% for h1 in page.toc %}
+          <li>
+            <a data-for="{{h1.id}}" href="{{h1.permalink | safe}}">{{ h1.title }}</a>
+            {% if h1.children %}
+            <ul class="menu-list">
+              {% for h2 in h1.children %}
+              <li>
+                <a data-for="{{h2.id}}" href="{{h2.permalink | safe}}">{{ h2.title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </nav>
+    </div>
+  </aside>
 
 </div>
+
 {% endblock content %}
 
 {% block title %}{{ page.title }} &mdash; {{ config.title }}{% endblock title %}

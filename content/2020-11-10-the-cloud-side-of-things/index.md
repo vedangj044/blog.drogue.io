@@ -14,7 +14,7 @@ We already had posts about [WiFi Offloading using the ESP](@/2020-08-24-wifi-off
 However, what good is an [embedded HTTP client](https://crates.io/crates/drogue-http-client) for, if you have nowhere
 to send your data.
 
-### Getting started
+## Getting started
 
 Pushing a simple sensor value to a database is simple. Today, everyone can do that. There are so many examples out there,
 that show how to use a Raspberry Pi and push some data to a Mosquitto broker. I would argue, that this is nice, and cool,
@@ -26,7 +26,7 @@ This is great, because in most cases, people just try to build some kind of appl
 **on top of** IoT. This may require you to implement some functionality on the device side, and on the backend side.
 Without really knowing it, you implemented an HTTP server, simply for serving a static web page.
 
-### Suddenly things get complicated
+## Suddenly things get complicated
 
 Then, things tend to get much more complex than anticipated. Adding more devices also increases the number of devices
 you need to manage. It also increases the number of messages that hit your backend system. At best, you have a system
@@ -88,7 +88,7 @@ or directly.
 Whenever we can, we try to use the Knative eventing APIs, trying to be interoperable and modular. However, we still
 have ability to directly interface with Kafka, and leverage solutions that are more Kafka focused.
 
-### An example
+## An example
 
 We are in the middle of building this, and you can find an early start at
 [drogue-iot/drogue-cloud](https://github.com/drogue-iot/drogue-cloud) on GitHub. There isn't that much code, which is
@@ -108,13 +108,13 @@ The beauty with the Knative APIs is, that you can easily re-arrange your service
 channel and source, you could to with some other implementation. Or directly connect the HTTP endpoint to the
 "Influx DB pusher". Or put some conversion in the middle, …
 
-### What is next?
+## What is next?
 
 If you poke around in the repository, you will already find a few other things we are working on. However, I think this
 blog post is already long enough, but I also think the topic deserved a bit of introduction, just to explain what our
 motivation is, and were we are heading to.
 
-### See also
+## See also
 
 * [drogue-cloud repository](https://github.com/drogue-iot/drogue-cloud) 
 * [Knative](https://knative.dev)
