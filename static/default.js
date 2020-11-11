@@ -13,7 +13,7 @@ menuLinks.forEach(link => {
 
 // when scrolling
 window.onscroll = (()=> {
-    let mainSection = document.querySelectorAll('h1, h2');
+    let mainSection = document.querySelectorAll('h1, h2, h3, h4');
 
     let active = null;
 
