@@ -22,3 +22,4 @@ feed_filename = "rss.xml"
 [extra.authors]
 bobmcwhirter = { name = "Bob McWhirter" }
 ctron = { name = "Jens Reimann" }
+jcrossley = { name = "Jim Crossley" }
