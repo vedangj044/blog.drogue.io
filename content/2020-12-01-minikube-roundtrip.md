@@ -139,7 +139,7 @@ That `http POST ...` example command near the end of the above output
 is what you'll use in your device code to set the `Host` header.
 
 An [extremely rudimentary
-application](https://github.com/jcrossley3/stm32f401-blinky/blob/0e97ed4c2d256376ea61c30701288642f34c0209/src/main.rs)
+application](https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs)
 based on the [RTIC framework](http://rtic.rs) demonstrates the posting
 of a single piece of data to the `http-endpoint` using the
 [drogue_esp8266](https://github.com/drogue-iot/drogue-esp8266),
@@ -149,11 +149,11 @@ crates.
 
 Relevant sections of the code -- replicated below -- include
 [configuring the
-app](https://github.com/jcrossley3/stm32f401-blinky/blob/0e97ed4c2d256376ea61c30701288642f34c0209/src/main.rs#L4-L8)
+app](https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L4-L8)
 for your local network and minikube, [creating the correct IP
-address](https://github.com/jcrossley3/stm32f401-blinky/blob/0e97ed4c2d256376ea61c30701288642f34c0209/src/main.rs#L101-L104),
+address](https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L101-L104),
 and finally the [HTTP POST
-request](https://github.com/jcrossley3/stm32f401-blinky/blob/0e97ed4c2d256376ea61c30701288642f34c0209/src/main.rs#L121-L126).
+request](https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L121-L126).
 
 ```rust
 const HOST: &str = "192.168.0.110";    // laptop IP
@@ -174,7 +174,7 @@ let mut req = con
 
 Obviously, unless you happen to have an STM32F401 board connected to
 an ESP8266 module via USART6, [this
-code](https://github.com/jcrossley3/stm32f401-blinky/tree/esp8266) is
+code](https://github.com/jcrossley3/stm32f401-esp8266) is
 not going to work out of the box.
 
 But hopefully we've at least shown it's possible to combine the
