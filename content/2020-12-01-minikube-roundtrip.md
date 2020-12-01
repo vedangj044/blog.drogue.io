@@ -1,16 +1,16 @@
 +++
-title = "Minikube Roundtrip"
+title = "Testing IoT services with Minikube, Knative and Rust"
 description = "Posting data from an IoT device to a Knative service deployed on Minikube"
 extra.author = "jcrossley"
 +++
 
 [Minikube](https://minikube.sigs.k8s.io/docs/) is a convenient tool
-for developing Kubernetes services on your laptop, but how can you
-access them from your IoT device? In this article, we'll walk through
+for developing cloud services on your laptop, but how can you access
+them from your IoT device? In this article, we'll walk through
 deploying the
 [drogue-cloud](https://github.com/drogue-iot/drogue-cloud) project on
-minikube and then post data to its knative endpoint via an ESP8266
-WiFi module.
+minikube and then use some drogue crates to post data to its knative
+endpoint via an ESP8266 WiFi module.
 
 <!-- more -->
 
@@ -36,7 +36,9 @@ kubectl get ksvc -n drogue-iot http-endpoint -o jsonpath='{.status.url}'
 ```
 
 It's this `Host` header that ensures your request is routed to the
-proper service. And now, as promised, the details...
+proper service.
+
+And now, as promised, the details...
 
 # Configure Minikube
 
@@ -62,7 +64,7 @@ minikube start --cpus 4 --memory 10240 --disk-size 20gb --addons ingress
 
 In addition, you'll need to fire up [minikube
 tunnel](https://minikube.sigs.k8s.io/docs/commands/tunnel/) in a
-separate shell to enable LoadBalancer type services.
+separate shell to enable `LoadBalancer` type services.
 
 ```shell
 minikube tunnel
@@ -173,6 +175,8 @@ let mut req = con
 Obviously, unless you happen to have an STM32F401 board connected to
 an ESP8266 module via USART6, [this
 code](https://github.com/jcrossley3/stm32f401-blinky/tree/esp8266) is
-not going to work for your device, but hopefully there's at least
-enough here you can use if you're looking to get a little Rust-y IoT
-in your mini-kubernetes!
+not going to work out of the box.
+
+But hopefully we've at least shown it's possible to combine the
+conveniences of Minikube for your cloud services work with Rust for
+your IoT development.
