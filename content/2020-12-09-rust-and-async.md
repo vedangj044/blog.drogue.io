@@ -51,7 +51,7 @@ will not return the result you're asking for. Great? Great! Instead, it signals 
 that function to go off, and do whatever it needs to do, and you'll check back later when 
 you need to know the answer.
 
-```
+```rust
 async fn foo() {
   let not_the_result = bar();
   // bar is possibly chugging away doing work, maybe, kinda
