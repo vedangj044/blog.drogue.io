@@ -73,7 +73,7 @@ processor from _doing other stuff_. Which is where the real power lies.
 # Is it async turtles all the way down?
 
 As noted above, you can only call an async function from within an already async context.
-How do you get into async context to start? 
+How do you get into an async context to start? 
 
 ## Executors
 
@@ -215,7 +215,7 @@ for storing the async continuation structures that Rust creates behind the
 scenes. 
 
 Also, if you want to create something that is asynchronous, you take on the
-synchronization burder and end up writing implementations of `Future` which,
+synchronization burden and end up writing implementations of `Future` which,
 while being straight-forward, is also non-trivial.  _Using_ existing async 
 functionality is much easier.
 
