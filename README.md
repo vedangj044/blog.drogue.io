@@ -1,6 +1,8 @@
+# [blog.drogue.io](https://blog.drogue.io)
 
 ## Checklist
 
+* [ ] Check locally: `zola serve`
 * [ ] Provided a [summary section](#summary)
 * [ ] Considered adding a [description](#description)
 * [ ] Tagged the [author](#author)
