@@ -40,7 +40,7 @@ To connect BLE devices to the cloud, some sort of gateway software is needed. Th
 
 We'll use a proof of concept [drogue-bluetooth-gateway](https://github.com/drogue-iot/drogue-bluetooth-gateway), which should work out of the box on most Linux distributions. The idea is that this can run on a gateway device like Raspberry PI and forward data to the cloud. The gateway talks to the bluetooth daemon (BlueZ) using DBus, and needs to run as a priviledged container.
 
-To deploy the cloud, have a look at [drogue-cloud](https://github.com/drogue-iot/drogue-cloud) which you can run locally on [minikube](https://github.com/kubernetes/minikube/releases).
+To deploy the cloud, have a look at [drogue-cloud](@/2020-11-10-the-cloud-side-of-things/index.md) which you can run locally on [minikube](@/2020-12-01-minikube-roundtrip.md).
 
 ## The code
 
