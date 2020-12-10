@@ -1,5 +1,6 @@
 +++
 title = "Rust on the BBC micro:bit"
+description = "The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud"
 extra.author = "lulf"
 +++
 
