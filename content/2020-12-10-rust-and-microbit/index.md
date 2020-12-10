@@ -40,7 +40,7 @@ To deploy the cloud, have a look at [drogue-cloud](https://github.com/drogue-iot
 
 ## The code
 
-The example used in this blog post can be found at the [drogue-microbit](https://github.com/drogue-iot/drogue-microbit/tree/main/examples/ble-thermometer) repository. This repository contains some libraries and example applications for the micro:bit based on the [nrf-hal](https://github.com/nrf-hal/nrf-hal). You might also want to have a look at the [microbit](https://crates.io/crates/microbit) crate, which re-exports on nrf-hal + some libraries.
+The example used in this blog post can be found at the [drogue-microbit](https://github.com/drogue-iot/drogue-microbit/tree/main/examples/ble-thermometer) repository. This repository contains some libraries and example applications for the micro:bit based on the [nrf-hal](https://github.com/nrf-hal/nrf-hal). An alternative crate to use is the [microbit](https://crates.io/crates/microbit) crate, which re-exports on nrf-hal + some libraries.
 
 The example uses [RTIC](https://rtic.rs), which provides a useful abstraction for writing embedded rust application.
 
