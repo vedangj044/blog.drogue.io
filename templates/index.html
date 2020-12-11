@@ -40,6 +40,15 @@
     <meta name="twitter:description" content="{{config.description}}">
     <meta name="twitter:image" content="{{ get_url(path='/default_social_image.png') | safe }}">
     {% endblock meta_head %}
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
   </head>
 
 <body>
