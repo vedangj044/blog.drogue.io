@@ -4,21 +4,41 @@
 
 <div class="columns">
   <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
-  <article itemscope itemtype="http://schema.org/BlogPosting">
+    <article itemscope itemtype="http://schema.org/BlogPosting">
 
-    <div class="content">
-      <h1 class="title is-size-2" itemprop="name headline">{{ page.title }}</h1>
-      <div class="subtitle has-text-grey">
-      {{ post_macros::post_info(page=page) }}
-      </div>
-    </div>
+      <section class="content">
+        <h1 class="title is-size-2" itemprop="name headline">{{ page.title }}</h1>
+        <div class="subtitle has-text-grey">
+        {{ post_macros::post_info(page=page) }}
+        </div>
+      </section>
 
-    <hr/>
+      <hr/>
 
-    <div class="content post-content" itemprop="articleBody">
-      {{ page.content | safe }}
-    </div>
-  </article>
+      <section class="content post-content" itemprop="articleBody">
+        {{ page.content | safe }}
+      </section>
+
+      <section id="comments" class="content">
+
+        <hr>
+
+        <div id='discourse-comments'></div>
+
+        <script type="text/javascript">
+            DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                discourseEmbedUrl: '{{ get_url(path=page.path) | safe  }}' };
+
+            (function() {
+                var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+            })();
+        </script>
+      </section>
+
+    </article>
+
   </div>
 
   <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop px-5">
