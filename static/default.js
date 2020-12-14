@@ -28,7 +28,7 @@ window.onscroll = (()=> {
 
         let rect = el.getBoundingClientRect();
 
-        console.log(id, rect)
+        // console.log(id, rect)
 
         if ( rect.top >= -5 ) {
             active = id;
