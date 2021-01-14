@@ -1,0 +1,63 @@
+
+$red: #e20027
+$blue: #0167aa
+
+$link: $red
+$title-color: $blue
+$content-heading-color: $blue
+
+$body-font-size: 1.25em
+
+@import "../node_modules/bulma/bulma"
+
+html
+  scroll-behavior: smooth
+
+.title a
+  text-decoration: none
+  color: inherit
+
+.post-info
+  display: block
+
+.post-info-item
+  display: inline-block
+
+.post-info-item ~ .post-info-item:before
+  content: '·'
+  padding-left: .5rem
+  padding-right: .5rem
+
+.post-content img
+  width: 100%
+
+// for the sticky boxes
+
+.is-sticky
+  position: sticky
+  top: 1rem
+
+// a non-important variant of is-hidden
+
+.is-skipped
+  display: none
+
+// link list
+
+.link-list li
+  display: inline-block
+  list-style-type: none
+
+.link-list li:before
+  content: '»'
+  margin-right: .5rem
+  margin-left: .5rem
+
++fullhd
+  .link-list li
+    display: list-item
+
+// video
+
+.video
+  text-align: center

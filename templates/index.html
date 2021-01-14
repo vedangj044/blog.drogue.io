@@ -63,33 +63,47 @@
 
 <section class="section">
   {% block content %}
-  <div class="container">
-    <div class="posts">
-      {% for page in section.pages %}
-      <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
-
-          <div class="content">
-          <h2 class="title is-2 is-spaced" itemprop="name headline">
-            <a href="{{ page.path }}">
-            {{ page.title }}
-            </a>
-          </h2>
-          </div>
-
-        <div class="content">
-          <div itemprop="articleSummary">
-            {{ page.summary | safe }}
-          </div>
+  <div class="container is-fluid">
+    <div class="columns is-multiline">
+      <aside class="column is-one-quarter-fullhd">
+        <div class="is-sticky">
+          <h2 class="title is-2 is-block-fullhd is-skipped">Links</h2>
+          <ul class="link-list">
+            <li>{{ common::link_list_item(label='GitHub Organization', href='https://github.com/drogue-iot') }}</li>
+            <li>{{ common::link_list_item(label='Community Chat', href='https://matrix.to/#/#drogue-iot:matrix.org') }}</li>
+            <li>{{ common::link_list_item(label='Forum', href='https://discourse.drogue.io') }}</li>
+          </ul>
         </div>
+      </aside>
+      <div class="column is-half-fullhd is-full">
+        <div class="posts">
+          {% for page in section.pages %}
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
 
-        <div class="content has-text-grey">
-          {{ post_macros::post_info(page=page,more=true) }}
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="{{ page.path }}">
+                {{ page.title }}
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                {{ page.summary | safe }}
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              {{ post_macros::post_info(page=page,more=true) }}
+            </div>
+
+          </div>
+          <hr/>
+
+          {% endfor %}
         </div>
-
       </div>
-      <hr/>
-
-      {% endfor %}
     </div>
   </div>
   {% endblock content %}

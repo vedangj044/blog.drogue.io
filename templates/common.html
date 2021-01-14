@@ -31,3 +31,8 @@
 {{ get_url(path=page.path ~ url) | safe }}
 {%- endif %}
 {%- endmacro abs_url %}
+
+{# generate a link list item #}
+{% macro link_list_item(label,href) -%}
+<a href="{{href}}" target="_blank">{{label}}</a>
+{%- endmacro link_list_item %}
