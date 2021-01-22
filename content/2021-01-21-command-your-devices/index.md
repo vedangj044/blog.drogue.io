@@ -17,11 +17,10 @@ controlling the environment by processing commands (usually sent by the cloud so
 
 Even if these two communication patterns look similar at the first glance, there are some big differences between them.
 Telemetry data are usually large in volume and they can be considered as a single event stream. In other words, we are not interested in consuming data of a single 
-device. That is why telemetry use case is a perfect fit for the Knative eventing as we can collect data from all our devices using different endpoints (and multiple instances of endpoints)
-and put them into the single *channel* (backed by Kafka topic). Our cloud services will then consume all these data and send them for further processing.
+device. That is why telemetry use case is a perfect fit for the Knative eventing as we can collect data from all our devices using different endpoints (and multiple instances of endpoints) and put them into the single *channel* (backed by Kafka topic). Our cloud services will then consume all these data and send them for further processing.
 
 Commands on the other hand are much smaller in volume, making them easier to handle. But at the same time commands are very targeted, as we're sending a command to a 
-particular device to perform certain action. In order to do so, the command needs to be consumed only by that one device (out of millions of other devices). To complicate things further, these devices are connected through different endpoints and can be even offline. We also need to think about different delivery guarantees and command acknowledgments as we will discuss a bit later.
+particular device to perform a certain action. In order to do so, the command needs to be consumed only by that one device (out of millions of other devices). To complicate things further, these devices are connected through different endpoints and can be even offline. We also need to think about different delivery guarantees and command acknowledgments as we will discuss a bit later.
 
 # Implementation
 
@@ -32,18 +31,18 @@ Having all this in mind, let's try to implement commands with our serverless IoT
 First of all we need a new service that will be used as an API by IoT applications to send commands. Let's call it *command endpoint*. As with the telemetry case, this endpoint will transform POST payloads to cloud events and send all commands to the dedicated Kafka channel.
 
 Now let's consider the scenario from the diagram, where devices are connected to different "device endpoints" (and different instances of those endpoints). 
-In the current scenario, as we don't know where the device might be connected (if at all), all our endpoints need to subscribe to the channel and receive every command. Then, based on their internal knowledge they can deliver the command to the appropriate device or drop it if the device is not connected to them. 
-This is a bit suboptimal as only one endpoint will actually deliver the message and everyone else will discard it. But remember, commands are low-volume traffic so event this solution can scale to large number of devices (and endpoints). And of course, this is just first implementation and we can improve on top of this design in the future.
+In the current scenario, as we don't know where the device might be connected (if at all), all our endpoints need to subscribe to the channel and receive every command. Then, based on their internal state they can deliver the command to the appropriate device or drop it if the device is not connected to them. 
+This is a bit suboptimal as only one endpoint will actually deliver the message and everyone else will discard it. But remember, commands are low-volume traffic so even this solution can scale to a large number of devices (and endpoints). And of course, this is just first implementation and we can improve on top of this design in the future.
 
 # Examples
 
-So, how all this look in practice? When you get the status of the Drogue cloud now, with
+So, how does all this look in practice? When you get the status of the Drogue cloud now, with
 
 ```shell
 ./hack/status.sh
 ```
 
-You'll see the new section with all important information about commands
+You'll see a new section with all important information about commands
 
 ```shell
 Send commands to the device
@@ -66,7 +65,7 @@ Send command to that device from another terminal window:
 
 Here, you can see how to *subscribe* to receive commands from your devices and also how to send commands to them by simply POSTing to the appropriate command endpoint URL.
 
-Interesting thing to discuss here is the *ttd* parameter needed in order to receive a command for a device using HTTP protocol. This is because, unlike MQTT, HTTP is not connection oriented protocol. Meaning that device will not keep a permanent connection to the cloud on which it can receive commands as they come. Specifying TTD (Time till disconnect) while sending telemetry will make the client wait for the specified number of seconds (30 in the example above) for cloud to send a command. This will usually trigger a backend solution (digital twin) to try to deliver a command to the device while it's connected.
+Interesting thing to discuss here is the *ttd* parameter, which is needed in order to receive a command for a device using HTTP protocol. This is because, unlike MQTT, HTTP is not connection oriented protocol. Meaning that device will not keep a permanent connection to the cloud on which it can receive commands as they come. Specifying TTD (Time till disconnect) while sending telemetry will make the client wait for the specified number of seconds (30 in the example above) for the cloud to send a command. This will usually trigger a backend solution (a digital twin for example) to send a command to the device while it's connected.
 
 ```shell
 $ http --auth device_id:foobar POST http://http-endpoint.drogue-iot.10.101.208.153.nip.io/publish/device_id/foo?ttd=30 temp:=42
@@ -96,8 +95,8 @@ Congratulations! You just sent your first commands to your devices.
 
 # Future
 
-We made our first foray into sending commands to devices using serverless infrastructure. But this is just a tip of the iceberg. Let's now discuss what future holds
-and what we need to do to make it production ready.
+We made our first foray into sending commands to devices using serverless infrastructure. But this is just a tip of the iceberg. Let's now discuss what the future holds
+and what we need to do to make all this production ready.
 
 ### Security
 
@@ -112,11 +111,10 @@ whether the command is actually executed or not. For example, if you send a comm
 
 ### Command buffering
 
-Generally storing/queueing commands for million of devices in this layer is not advisable. Consider queueing commands for a device that has been offline for a long time. What's the "time to live" for those commands? Are subsequent commands executed in order? What's the state of the device after executing all previously queued commands?
-The usual approach here is to use digital twin of the device to set the desired state of the device and the twin should try to apply that state to the device immediately.
-You should think of it more in the terms of Kubernetes reconciliation loops rather than queuing systems.
+Generally storing/queueing commands for million of devices is not advisable. Consider queueing commands for a device that has been offline for a long time. What's the "time to live" for those commands? Are subsequent commands executed in order? What's the state of the device after executing all previously queued commands?
+The usual approach here is to use a digital twin to set the desired state for the device. The twin then should try to reconcile that state with the physical device, by repeatedly sending commands with the latest state until it succeeds. But for this we need an immediate result of command execution. You should think of delivering commands more in the terms of Kubernetes reconciliation loops rather than queuing systems.
 
-However, some platforms allow temporary buffering of commands for offline devices, so we have to find a way to support it in a similar fashion.  
+However, some IoT platforms allow temporary buffering of commands for offline devices. We have to find a way to support it in a similar fashion so we can integrate with them.
 
 ### Filter
 
@@ -125,7 +123,7 @@ and already proven patterns for solving these kind of use cases, so stay tuned f
 
 ### More protocols
 
-So far we only covered HTTP (in a so called long polling fashion) and MQTT, which are the most common protocols used for IoT. But there's a room for a lot more of them. Opening the system for web socket connections, gRPC, AMQP, Kafka, etc. would help grow the ecosystem substantially.
+So far we only covered HTTP (in a so called "long polling" fashion) and MQTT, which are the most common protocols used for IoT today. But there's a room for a lot more of them. Opening the system for web socket connections, gRPC, AMQP, Kafka, etc. would help grow the ecosystem substantially.
 
 ### Cloud events specification
 
