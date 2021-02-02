@@ -798,3 +798,10 @@ Being able to dynamically adjust the priority of the async tasks is also a goal.
 
 We welcome any and all contributions to the project. Feel free to drop by our Matrix chat (see sidebar) or use our Discourse server.
 
+# Where to find it?
+
+Currently we've not published a crate to `crates.io` because too much is in flux.
+But you can find it on our GitHub:
+
+* [`drogue-device` on GitHub](https://github.com/drogue-iot/drogue-device)
+
