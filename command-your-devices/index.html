@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Command your devices &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Sending commands to your devices using Knative eventing">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Command your devices" />
+<meta name="twitter:description" content="Sending commands to your devices using Knative eventing">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Command your devices">
+<meta property="og:url" content="https://blog.drogue.io/command-your-devices">
+<meta property="og:description" content="Sending commands to your devices using Knative eventing">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Command your devices</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1541">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-01-21'>21 January 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Dejan Bosanac</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;command-your-devices&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>So far when we talked about serverless IoT cloud we focused only on one way communication, devices sending <em>telemetry</em> data to the cloud.
+But in order to have a complete IoT solution, we need to be able to control our devices as well, by sending <em>commands</em> back to them.</p>
+<span id="continue-reading"></span><h1 id="introduction-to-commands">Introduction to commands</h1>
+<p>Communication patterns between devices and clouds have been well known for a long time. IoT is all about sensing the physical world and controlling it
+using our devices and backend solutions. So our devices are behaving both as <em>sensors</em>, generating telemetry data for cloud to consume and <em>actuators</em>,
+controlling the environment by processing commands (usually sent by the cloud solution). </p>
+<p>Even if these two communication patterns look similar at the first glance, there are some big differences between them.
+Telemetry data are usually large in volume and they can be considered as a single event stream. In other words, we are not interested in consuming data of a single 
+device. That is why telemetry use case is a perfect fit for the Knative eventing as we can collect data from all our devices using different endpoints (and multiple instances of endpoints) and put them into the single <em>channel</em> (backed by Kafka topic). Our cloud services will then consume all these data and send them for further processing.</p>
+<p>Commands on the other hand are much smaller in volume, making them easier to handle. But at the same time commands are very targeted, as we're sending a command to a 
+particular device to perform a certain action. In order to do so, the command needs to be consumed only by that one device (out of millions of other devices). To complicate things further, these devices are connected through different endpoints and can be even offline. We also need to think about different delivery guarantees and command acknowledgments as we will discuss a bit later.</p>
+<h1 id="implementation">Implementation</h1>
+<p>Having all this in mind, let's try to implement commands with our serverless IoT stack.</p>
+<p><img src="https://blog.drogue.io/command-your-devices/commands.svg" alt="Commands" /></p>
+<p>First of all we need a new service that will be used as an API by IoT applications to send commands. Let's call it <em>command endpoint</em>. As with the telemetry case, this endpoint will transform POST payloads to cloud events and send all commands to the dedicated Kafka channel.</p>
+<p>Now let's consider the scenario from the diagram, where devices are connected to different &quot;device endpoints&quot; (and different instances of those endpoints). 
+In the current scenario, as we don't know where the device might be connected (if at all), all our endpoints need to subscribe to the channel and receive every command. Then, based on their internal state they can deliver the command to the appropriate device or drop it if the device is not connected to them. 
+This is a bit suboptimal as only one endpoint will actually deliver the message and everyone else will discard it. But remember, commands are low-volume traffic so even this solution can scale to a large number of devices (and endpoints). And of course, this is just first implementation and we can improve on top of this design in the future.</p>
+<h1 id="examples">Examples</h1>
+<p>So, how does all this look in practice? When you get the status of the Drogue cloud now, with</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">./hack/status.sh
+</span></code></pre>
+<p>You'll see a new section with all important information about commands</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">Send commands to the device
+---------------------------
+
+After you created a device, try these commands at a shell prompt:
+
+Publish data from the device and specify how long will you wait for a command with &#39;ttd&#39; parameter (in seconds)
+
+  http --auth device_id:foobar POST http://http-endpoint.drogue-iot.10.101.208.153.nip.io/publish/device_id/foo?ttd=30 temp:=42
+
+Or subscribe with the MQTT device
+
+  mqtt sub -v -h 192.168.64.28.nip.io -p 30880 -u device_id -pw foobar -i device_id -s --cafile tls.crt -t cmd -V 3
+
+Send command to that device from another terminal window:
+
+ http POST http://command-endpoint.drogue-iot.10.101.208.153.nip.io/command/device_id/foo set-temp:=40
+</span></code></pre>
+<p>Here, you can see how to <em>subscribe</em> to receive commands from your devices and also how to send commands to them by simply POSTing to the appropriate command endpoint URL.</p>
+<p>Interesting thing to discuss here is the <em>ttd</em> parameter, which is needed in order to receive a command for a device using HTTP protocol. This is because, unlike MQTT, HTTP is not connection oriented protocol. Meaning that device will not keep a permanent connection to the cloud on which it can receive commands as they come. Specifying TTD (Time till disconnect) while sending telemetry will make the client wait for the specified number of seconds (30 in the example above) for the cloud to send a command. This will usually trigger a backend solution (a digital twin for example) to send a command to the device while it's connected.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">$ http --auth device_id:foobar POST http://http-endpoint.drogue-iot.10.101.208.153.nip.io/publish/device_id/foo?ttd=30 temp:=42
+HTTP/1.1 202 Accepted
+date: Thu, 21 Jan 2021 12:05:15 GMT
+server: envoy
+transfer-encoding: chunked
+x-envoy-upstream-service-time: 3140
+
+{&quot;set-temp&quot;: 40}
+</span></code></pre>
+<p>On the other hand, devices connecting using MQTT have a much simpler task. They just need to <em>subscribe</em> to a designated topic and will receive commands as they are sent by the application.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">$ mqtt sub -v -h 192.168.64.28.nip.io -p 30880 -u device_id -pw foobar -i device_id -s --cafile tls.crt -t cmd -V 3
+Picked up _JAVA_OPTIONS: -Dvertx.disableDnsResolver=true
+Identifier &#39;device_id&#39; may contain invalid characters (&#39;_&#39;)
+Client &#39;device_id@192.168.64.28.nip.io&#39; sending CONNECT MqttConnect{keepAlive=60, cleanSession=true, simpleAuth=MqttSimpleAuth{username and password}}
+Client &#39;device_id@192.168.64.28.nip.io&#39; received CONNACK MqttConnAck{returnCode=SUCCESS, sessionPresent=false}
+Client &#39;device_id@192.168.64.28.nip.io&#39; sending SUBSCRIBE MqttSubscribe{subscriptions=[MqttSubscription{topicFilter=cmd, qos=EXACTLY_ONCE}]}
+Client &#39;device_id@192.168.64.28.nip.io&#39; received SUBACK MqttSubAck{returnCodes=[SUCCESS_MAXIMUM_QOS_1]}
+{&quot;set-temp&quot;: 40}
+Client &#39;device_id@192.168.64.28.nip.io&#39; received PUBLISH (&#39;{&quot;set-temp&quot;: 40}&#39;) MqttPublish{topic=cmd, payload=16byte, qos=AT_LEAST_ONCE, retain=false}
+</span></code></pre>
+<p>Congratulations! You just sent your first commands to your devices.</p>
+<h1 id="future">Future</h1>
+<p>We made our first foray into sending commands to devices using serverless infrastructure. But this is just a tip of the iceberg. Let's now discuss what the future holds
+and what we need to do to make all this production ready.</p>
+<h3 id="security">Security</h3>
+<p>First of all, we need to sort the security of the command endpoint (and cloud services in general) as we want to make sure that only appropriate applications
+can receive telemetry and send commands to our devices.</p>
+<h3 id="quality-of-service">Quality of service</h3>
+<p>As it's implemented at the moment, commands are sent in the &quot;fire and forget&quot; manner. The application have no confirmation if the command was delivered, let alone 
+executed by the device. This kind of commands are useful in some scenarios and much easier to implement (that's why we started there), but often you want a confirmation
+whether the command is actually executed or not. For example, if you send a command to close the door you want to be sure that the door is closed as a result (or know that the command has failed). This kind of request-reply pattern requires some more design and implementation considerations (especially over the eventing infrastructure), but it's definitely a required feature and something we need to provide.</p>
+<h3 id="command-buffering">Command buffering</h3>
+<p>Generally storing/queueing commands for million of devices is not advisable. Consider queueing commands for a device that has been offline for a long time. What's the &quot;time to live&quot; for those commands? Are subsequent commands executed in order? What's the state of the device after executing all previously queued commands?
+The usual approach here is to use a digital twin to set the desired state for the device. The twin then should try to reconcile that state with the physical device, by repeatedly sending commands with the latest state until it succeeds. But for this we need an immediate result of command execution. You should think of delivering commands more in the terms of Kubernetes reconciliation loops rather than queuing systems.</p>
+<p>However, some IoT platforms allow temporary buffering of commands for offline devices. We have to find a way to support it in a similar fashion so we can integrate with them.</p>
+<h3 id="filter">Filter</h3>
+<p>As we've seen previously, at the moment all our device endpoints receive all the commands and then most of them are discarded. There's a lot of room for improvement there
+and already proven patterns for solving these kind of use cases, so stay tuned for future improvements.</p>
+<h3 id="more-protocols">More protocols</h3>
+<p>So far we only covered HTTP (in a so called &quot;long polling&quot; fashion) and MQTT, which are the most common protocols used for IoT today. But there's a room for a lot more of them. Opening the system for web socket connections, gRPC, AMQP, Kafka, etc. would help grow the ecosystem substantially.</p>
+<h3 id="cloud-events-specification">Cloud events specification</h3>
+<p>As with the telemetry, the system uses <em>cloud events</em> as an internal events format. We should strive to create a common specification for the event format in this case as that could foster more integration options in the future.</p>
+<p>As you can see, we are just scratching the tip of the iceberg here. There will be a lot of good stuff coming in this area. So keep an eye on this space and join us in developing it if that's what interests you.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/command-your-devices' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="introduction-to-commands" href="https://blog.drogue.io/command-your-devices/#introduction-to-commands">Introduction to commands</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="implementation" href="https://blog.drogue.io/command-your-devices/#implementation">Implementation</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="examples" href="https://blog.drogue.io/command-your-devices/#examples">Examples</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="future" href="https://blog.drogue.io/command-your-devices/#future">Future</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="security" href="https://blog.drogue.io/command-your-devices/#security">Security</a>
+                </li>
+                
+                <li>
+                  <a data-for="quality-of-service" href="https://blog.drogue.io/command-your-devices/#quality-of-service">Quality of service</a>
+                </li>
+                
+                <li>
+                  <a data-for="command-buffering" href="https://blog.drogue.io/command-your-devices/#command-buffering">Command buffering</a>
+                </li>
+                
+                <li>
+                  <a data-for="filter" href="https://blog.drogue.io/command-your-devices/#filter">Filter</a>
+                </li>
+                
+                <li>
+                  <a data-for="more-protocols" href="https://blog.drogue.io/command-your-devices/#more-protocols">More protocols</a>
+                </li>
+                
+                <li>
+                  <a data-for="cloud-events-specification" href="https://blog.drogue.io/command-your-devices/#cloud-events-specification">Cloud events specification</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

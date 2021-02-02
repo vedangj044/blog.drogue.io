@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>WiFi Offloading &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="My recent work has been around Cortex-M embedded development using Rust and RTIC.
+I&#x27;m using a handy little development board in the form of the STM Nucleo-F401RE.
+Unfortunately, it&#x27;s handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="WiFi Offloading" />
+<meta name="twitter:description" content="My recent work has been around Cortex-M embedded development using Rust and RTIC.
+I&#x27;m using a handy little development board in the form of the STM Nucleo-F401RE.
+Unfortunately, it&#x27;s handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="WiFi Offloading">
+<meta property="og:url" content="https://blog.drogue.io/wifi-offload">
+<meta property="og:description" content="My recent work has been around Cortex-M embedded development using Rust and RTIC.
+I&#x27;m using a handy little development board in the form of the STM Nucleo-F401RE.
+Unfortunately, it&#x27;s handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">WiFi Offloading</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>11 minute read</span>
+        <meta itemprop="wordCount" content="2072">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-08-24'>24 August 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;wifi-offload&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>My recent work has been around Cortex-M embedded development using Rust and <a href="https://rtic.rs/">RTIC</a>.
+I'm using a handy little development board in the form of the <a href="https://www.digikey.com/product-detail/en/stmicroelectronics/NUCLEO-F401RE/497-14360-ND/4695525">STM Nucleo-F401RE</a>.
+Unfortunately, it's handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.</p>
+<span id="continue-reading"></span>
+<p>There also exists another board (using an Xtensa chip) called an <a href="https://www.digikey.com/product-detail/en/sparkfun-electronics/WRL-13678/1568-1235-ND/5725944">ESP8266</a>.</p>
+<p>The ESP is nice in that it contains a stock firmware that responds to Hayes AT commands (like a modem) and can do networky types of things.
+Then again, the ESP uses Hayes AT commands, which are ASCII-like, across a serial port, which is decidedly less networky feeling from the Rust end of the stick.</p>
+<h1 id="embedded-nal-or-drogue-network"><code>embedded-nal</code> (or <a href="https://crates.io/crates/drogue-network">Drogue-Network</a>)</h1>
+<p>There exists an unpublished Rust crate called <code>embedded-nal</code>. 
+The &quot;nal&quot; stands for &quot;Network Abstraction Layer&quot;. 
+This crate acts as an API and contains Rust traits that can be backed by implementations.
+Consider it to be akin to the socket-related bits of the POSIX standard.
+By itself, it does nothing. 
+But with an implementation, higher-level drivers can be written regardless of the underlying networking stack.</p>
+<p>Since <code>embedded-nal</code> is not-yet-published, I've taken a non-agressive fork and published it as the <a href="https://crates.io/crates/drogue-network"><code>drogue-network</code></a> crate.</p>
+<h1 id="let-s-look-at-the-traits">Let's look at the traits...</h1>
+<p>I'm initially only concerned wtih TCP, even though the crate also defines a UDP trait.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">/// This trait is implemented by TCP/IP stacks. You could, for example, have an implementation
+/// which knows how to send AT commands to an ESP8266 WiFi module. You could have another implemenation
+/// which knows how to driver the Rust Standard Library&#39;s `std::net` module. Given this trait, you can
+/// write a portable HTTP client which can work with either implementation.
+</span><span style="color:#b48ead;">pub trait </span><span style="color:#c0c5ce;">TcpStack {
+	</span><span style="color:#65737e;">/// The type returned when we create a new TCP socket
+	</span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">TcpSocket;
+	</span><span style="color:#65737e;">/// The type returned when we have an error
+	</span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Error: core::fmt::Debug;
+
+	</span><span style="color:#65737e;">/// Open a new TCP socket. The socket starts in the unconnected state.
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">open</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">mode</span><span style="color:#c0c5ce;">: Mode) -&gt; Result&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+
+	</span><span style="color:#65737e;">/// Connect to the given remote host and port.
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">connect</span><span style="color:#c0c5ce;">(
+		&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">,
+		</span><span style="color:#bf616a;">socket</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket,
+		</span><span style="color:#bf616a;">remote</span><span style="color:#c0c5ce;">: SocketAddr,
+	) -&gt; Result&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+
+	</span><span style="color:#65737e;">/// Check if this socket is connected
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">is_connected</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">socket</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket) -&gt; Result&lt;</span><span style="color:#b48ead;">bool</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+
+	</span><span style="color:#65737e;">/// Write to the stream. Returns the number of bytes written is returned
+	/// (which may be less than `buffer.len()`), or an error.
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">write</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">socket</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">mut Self::</span><span style="color:#c0c5ce;">TcpSocket, </span><span style="color:#bf616a;">buffer</span><span style="color:#c0c5ce;">: &amp;[</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">]) -&gt; nb::Result&lt;</span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+
+	</span><span style="color:#65737e;">/// Read from the stream. Returns `Ok(n)`, which means `n` bytes of
+	/// data have been received and they have been placed in
+	/// `&amp;buffer[0..n]`, or an error.
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">read</span><span style="color:#c0c5ce;">(
+		&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">,
+		</span><span style="color:#bf616a;">socket</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">mut Self::</span><span style="color:#c0c5ce;">TcpSocket,
+		</span><span style="color:#bf616a;">buffer</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> [</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">],
+	) -&gt; nb::Result&lt;</span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+
+	</span><span style="color:#65737e;">/// Close an existing TCP socket.
+	</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">close</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">socket</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket) -&gt; Result&lt;(), </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt;;
+}
+</span></code></pre>
+<p>Basically it boils down to being able to:</p>
+<ul>
+<li>open</li>
+<li>connect</li>
+<li>write</li>
+<li>read</li>
+<li>close</li>
+</ul>
+<p>As with many abstraction crates, this leaves some types relatively undefined, for the implementation to choose.
+In this case, the <code>TcpSocket</code> type and the <code>Error</code> type are both implementation-defined.
+From the point-of-view of the <code>TcpStack</code> trait, both of those types are opaque.</p>
+<h2 id="interior-mutability">Interior mutability</h2>
+<p>As we know from Rust, methods that take <code>&amp;self</code> are immutable, while those that take <code>&amp;mut self</code> are mutable.
+This trait defines purely non-mutable (in relation to <code>self</code>) methods.<br />
+But surely the implementation needs to do some book-keeping when opening/connecting/closing sockets, which
+sounds like mutability.</p>
+<p>This is a sure sign we probably need <a href="https://doc.rust-lang.org/book/ch15-05-interior-mutability.html"><em>interior mutability</em></a>.</p>
+<p>Rust gives us the <code>RefCell&lt;T&gt;</code> wrapper that allows just that. 
+Calling an immutable method on an immutable object is allowed, and internally the method, <em>at runtime</em> gets a
+mutable reference to <em>something</em> that does mutable work.</p>
+<p>We'll return to that in a moment.</p>
+<h1 id="let-s-talk-to-our-board">Let's talk to our board...</h1>
+<p>Before we can implement a <code>TcpStack</code>, we need to be able to just have a conversation with our ESP8266 as it sits connected to our serial USART pins.</p>
+<p>As we discussed in our last post, this involves some board-specific setup, where we:</p>
+<ul>
+<li>get the transmit and receive pins, and convince our F401RE that we want to use them for USART communication.</li>
+<li>get our pins which are connected to the ESP's <em>enable</em> and <em>reset</em> pins, and convince our F401RE that we want to be able to push them high or pull them low.</li>
+<li>use some of those pins to setup a <code>Serial</code> port for USART6 running at 115,200bps.</li>
+<li>enable notifications for the RXNE (receive register <em>not empty</em>; data is ready for us) interrupt.</li>
+<li>and then split the serial port into 2 halfs: transmit and receive.</li>
+</ul>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">// SERIAL pins for USART6
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> tx_pin = pa11.</span><span style="color:#96b5b4;">into_alternate_af8</span><span style="color:#c0c5ce;">();
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> rx_pin = pa12.</span><span style="color:#96b5b4;">into_alternate_af8</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#65737e;">// enable pin
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> en = gpioc.pc10.</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">();
+</span><span style="color:#65737e;">// reset pin
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> reset = gpioc.pc12.</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> usart6 = device.</span><span style="color:#d08770;">USART6</span><span style="color:#c0c5ce;">;
+
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> serial = Serial::usart6(
+    usart6,
+    (tx_pin, rx_pin),
+    Config {
+        baudrate: </span><span style="color:#d08770;">115_200.</span><span style="color:#96b5b4;">bps</span><span style="color:#c0c5ce;">(),
+        parity: Parity::ParityNone,
+        stopbits: StopBits::</span><span style="color:#d08770;">STOP1</span><span style="color:#c0c5ce;">,
+        ..Default::default()
+    },
+    clocks,
+).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+serial.</span><span style="color:#96b5b4;">listen</span><span style="color:#c0c5ce;">(nucleo_f401re::hal::serial::Event::Rxne);
+</span><span style="color:#b48ead;">let </span><span style="color:#c0c5ce;">(tx, rx) = serial.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>But right now all we have is a generic serial port pushing bytes back and forth, without any semantics applied.
+Thankfully, we've created an ESP8266 driver, though, which can apply some semantics and gives us an easier-to-use way to interact.
+The driver crate gives us an <code>initialize(...)</code> free function which consumes both halves of the serial port, along with the <em>enable</em> and <em>reset</em> pins, <em>plus two queues</em>.</p>
+<p>Why two queues?</p>
+<p>The ESP communicates over the serial port in 2 ways:</p>
+<ol>
+<li>command/response</li>
+<li>unsolicited messages</li>
+</ol>
+<p>These responses and messages will be created from within the interrupt handler from bytes that have arrived and been interpreted, but consumed elsewhere.
+Using a <a href="https://crates.io/crates/heapless">heapless</a> <code>Queue</code> allows us to have lock-free <code>Producer</code> and <code>Consumer</code> to shuffle messages between the contexts.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">
+</span><span style="color:#b48ead;">static mut </span><span style="color:#d08770;">RESPONSE_QUEUE</span><span style="color:#c0c5ce;">: Queue&lt;Response, U2&gt; = Queue(i::Queue::new());
+</span><span style="color:#b48ead;">static mut </span><span style="color:#d08770;">NOTIFICATION_QUEUE</span><span style="color:#c0c5ce;">: Queue&lt;Response, U16&gt; = Queue(i::Queue::new());
+
+</span><span style="color:#b48ead;">let </span><span style="color:#c0c5ce;">(adapter, ingress) = </span><span style="color:#96b5b4;">initialize</span><span style="color:#c0c5ce;">(
+    tx, rx,
+    &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> en, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> reset,
+    </span><span style="color:#b48ead;">unsafe </span><span style="color:#c0c5ce;">{ &amp;</span><span style="color:#b48ead;">mut </span><span style="color:#d08770;">RESPONSE_QUEUE </span><span style="color:#c0c5ce;">},
+    </span><span style="color:#b48ead;">unsafe </span><span style="color:#c0c5ce;">{ &amp;</span><span style="color:#b48ead;">mut </span><span style="color:#d08770;">NOTIFICATION_QUEUE </span><span style="color:#c0c5ce;">},
+).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Now we are holding two objects: an <code>adapter</code> which is the user-facing
+client for interacting with the esp8266 wifi adapter, an an <em>ingress</em> which can be used from interrupt service routines to process inbound bytes.</p>
+<h1 id="wiring-up-the-interrupts">Wiring up the interrupts</h1>
+<p>As noted above, we're using RTIC. 
+RTIC provides a place to do your initialization, and an easy way to wire up interrupt handlers and scheduled tasks, with priorities.
+It also provides a way to share resources between these different contexts. 
+So at the end of our initializtion process, we stuff the objects into the shared-resources object and return it:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">init::LateResources {
+    adapter: Some(adapter),
+    ingress,
+}
+</span></code></pre><h2 id="ingress-bytes">Ingress bytes</h2>
+<p>When commands are transmitted (via our client <code>adapter</code>), the ESP8266 will trigger the <code>USART6</code> interrupt for every byte that gets sent back to us.</p>
+<p>Thankfully, our <code>ingress</code> object is designed to accept those bytes, so it's quick to wire it up to the interrupt:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(binds = USART6, priority = 10, resources = [ingress])]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">usart</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: usart::Context) {
+    </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Err(b) = ctx.resources.ingress.</span><span style="color:#96b5b4;">isr</span><span style="color:#c0c5ce;">() {
+        info!(&quot;</span><span style="color:#a3be8c;">failed to ingress {}</span><span style="color:#c0c5ce;">&quot;, b as </span><span style="color:#b48ead;">char</span><span style="color:#c0c5ce;">);
+    }
+}
+</span></code></pre>
+<p>With RTIC, the highest priority task using a resource can use it lock-free, because it can interrupt any other task.
+So we just call the <code>isr()</code> method on our <code>ingress</code> which reads a byte and adds it to an internal buffer.
+Interrupt service routines should be <em>fast</em>, because they might be called a <em>lot</em>. 
+In this case, for <em>every byte that arrives</em> at potentially 115,200bps.</p>
+<h2 id="process-bytes">Process bytes</h2>
+<p>Since the ingressing of bytes needs to be fast, all it does is put it on a buffer and return. 
+But at some point, we need to digest those bytes and determine if they are meaningful, or if we're still waiting on more.</p>
+<p>For this digesting, we set up a recurring scheduled task, which we schedule the first time from our initialization,
+and then it infinitely reschedules itself.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">const </span><span style="color:#d08770;">DIGEST_DELAY</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">u32 </span><span style="color:#c0c5ce;">= </span><span style="color:#d08770;">100</span><span style="color:#c0c5ce;">;
+
+#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(schedule = [digest], priority = 2, resources = [ingress])]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">digest</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: digest::Context) {
+    ctx.resources.ingress.</span><span style="color:#96b5b4;">lock</span><span style="color:#c0c5ce;">(|</span><span style="color:#bf616a;">ingress</span><span style="color:#c0c5ce;">| ingress.</span><span style="color:#96b5b4;">digest</span><span style="color:#c0c5ce;">());
+    ctx.schedule.</span><span style="color:#96b5b4;">digest</span><span style="color:#c0c5ce;">(ctx.scheduled + (</span><span style="color:#d08770;">DIGEST_DELAY </span><span style="color:#c0c5ce;">* </span><span style="color:#d08770;">100_000</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">cycles</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+}
+</span></code></pre>
+<p>It's using the same <code>ingress</code> resource, but at a lower priority than the USART, so when it fires, it could conceivably
+be interrupted by the USART interrupt. By locking the <code>ingress</code> object, we can disable that interrupt for a moment and
+call our <code>digest()</code> method.</p>
+<p>The <code>digest()</code> method attempts to parse the internal buffer, and figures out if it represents a response to a previously-issued command
+or an unsolicited message, and if so, it builds a <code>Response</code> object and puts it on the appropriate <code>Queue</code> using its <code>Producer</code>.</p>
+<h1 id="where-s-the-wifi-bucko">Where's the WiFi, bucko?</h1>
+<p>Yeah, we're still not doing WiFi or sockets, are we? </p>
+<p>Let's do that now.</p>
+<p>In the idle portion of the app, we can use the <code>adapter</code> and magically transform it into a <code>TcpStack</code> implementation.</p>
+<p>First, since we're going to be transforming our adapter into something else, we'll be mutating it. 
+So we have to <code>take()</code> it from the <code>Some(T)</code> that is holding it on the shared resources, which replaces
+it with a <code>None</code>.</p>
+<p>Next we use it directly to connect to our WiFi. Behind the scenes, calling <code>'join(...)</code> for instance
+will transmit an AT command, and the response will come back through the USART interrupt and be digested
+by the digest task, <em>seemingly</em> in a multi-threaded sort of way. It's not really multi-threaded, the processor
+just keeps iterrupting our idle code and itself until a response occurs and our idle code is allowed to proceed.</p>
+<p><em>Finally</em> we can <code>into_network_stack()</code> our adapter, which <em>consumes</em> the adapter and gives us back a 
+<code>TcpStack</code> implementation. Hooray!</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">idle</span><span style="color:#c0c5ce;">(resources = [adapter])]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">idle</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: idle::Context) -&gt; ! {
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> adapter = ctx.resources.adapter.</span><span style="color:#96b5b4;">take</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = adapter.</span><span style="color:#96b5b4;">get_firmware_info</span><span style="color:#c0c5ce;">();
+    info!(&quot;</span><span style="color:#a3be8c;">firmware: {:?}</span><span style="color:#c0c5ce;">&quot;, result);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = adapter.</span><span style="color:#96b5b4;">join</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">oddly</span><span style="color:#c0c5ce;">&quot;, &quot;</span><span style="color:#a3be8c;">mywifipassword</span><span style="color:#c0c5ce;">&quot;);
+    info!(&quot;</span><span style="color:#a3be8c;">joined wifi {:?}</span><span style="color:#c0c5ce;">&quot;, result);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = adapter.</span><span style="color:#96b5b4;">get_ip_address</span><span style="color:#c0c5ce;">();
+    info!(&quot;</span><span style="color:#a3be8c;">IP {:?}</span><span style="color:#c0c5ce;">&quot;, result);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> network = adapter.</span><span style="color:#96b5b4;">into_network_stack</span><span style="color:#c0c5ce;">();
+    info!(&quot;</span><span style="color:#a3be8c;">network intialized</span><span style="color:#c0c5ce;">&quot;);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> socket = network.</span><span style="color:#96b5b4;">open</span><span style="color:#c0c5ce;">(Mode::Blocking).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+    info!(&quot;</span><span style="color:#a3be8c;">socket {:?}</span><span style="color:#c0c5ce;">&quot;, socket);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> socket_addr = SocketAddr::new(
+        IpAddr::from_str(&quot;</span><span style="color:#a3be8c;">192.168.1.245</span><span style="color:#c0c5ce;">&quot;).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">(),
+        </span><span style="color:#d08770;">80</span><span style="color:#c0c5ce;">,
+    );
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> socket = network.</span><span style="color:#96b5b4;">connect</span><span style="color:#c0c5ce;">(socket, socket_addr).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+    info!(&quot;</span><span style="color:#a3be8c;">socket connected {:?}</span><span style="color:#c0c5ce;">&quot;, result);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = network.</span><span style="color:#96b5b4;">write</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> socket, </span><span style="color:#b48ead;">b</span><span style="color:#c0c5ce;">&quot;</span><span style="color:#a3be8c;">GET / HTTP/1.1</span><span style="color:#96b5b4;">\r\n</span><span style="color:#a3be8c;">host:192.168.1.245</span><span style="color:#96b5b4;">\r\n\r\n</span><span style="color:#c0c5ce;">&quot;).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+    info!(&quot;</span><span style="color:#a3be8c;">sent {:?}</span><span style="color:#c0c5ce;">&quot;, result);
+
+    </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> buffer = [</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">128</span><span style="color:#c0c5ce;">];
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = network.</span><span style="color:#96b5b4;">read</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> socket, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> buffer);
+        </span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> result {
+            Ok(len) =&gt; {
+                </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> len &gt; </span><span style="color:#d08770;">0 </span><span style="color:#c0c5ce;">{
+                    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> s = core::str::from_utf8(&amp;buffer[</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">..len]);
+                    </span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> s {
+                        Ok(s) =&gt; {
+                            info!(&quot;</span><span style="color:#a3be8c;">recv: {} </span><span style="color:#c0c5ce;">&quot;, s);
+                        }
+                        Err(_) =&gt; {
+                            info!(&quot;</span><span style="color:#a3be8c;">recv: {} bytes (not utf8)</span><span style="color:#c0c5ce;">&quot;, len);
+                        }
+                    }
+                }
+            }
+            Err(e) =&gt; {
+                info!(&quot;</span><span style="color:#a3be8c;">ERR: {:?}</span><span style="color:#c0c5ce;">&quot;, e);
+                </span><span style="color:#b48ead;">break</span><span style="color:#c0c5ce;">;
+            }
+        }
+    }
+}
+</span></code></pre><h1 id="dig-into-the-implementation">Dig into the Implementation</h1>
+<p>We won't walk through all the bits, but to start, our <code>NetworkStack</code> is a simple struct, simply
+holding a <code>RefCell</code> of the previously &quot;consumed&quot; adapter:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">NetworkStack&lt;</span><span style="color:#b48ead;">&#39;a</span><span style="color:#c0c5ce;">, Tx&gt;
+where
+    Tx: Write&lt;u8&gt;,
+{
+    </span><span style="color:#bf616a;">adapter</span><span style="color:#c0c5ce;">: RefCell&lt;Adapter&lt;</span><span style="color:#b48ead;">&#39;a</span><span style="color:#c0c5ce;">, Tx&gt;&gt;,
+}
+</span></code></pre>
+<p>Since the <code>TcpStack</code> trait requires us to define our own <code>TcpSocket</code> type, here's ours:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">/// Handle to a socket.
+</span><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">derive</span><span style="color:#c0c5ce;">(Debug)]
+</span><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">TcpSocket {
+    </span><span style="color:#bf616a;">link_id</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">,
+    </span><span style="color:#bf616a;">mode</span><span style="color:#c0c5ce;">: Mode,
+}
+</span></code></pre>
+<p>The ESP8266 supports 5 concurrent connections, identified by a <code>link_id</code>, which we use to index into an array.</p>
+<p>We've also defined our own <code>SocketError</code> error type:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">derive</span><span style="color:#c0c5ce;">(Debug)]
+</span><span style="color:#b48ead;">pub enum </span><span style="color:#c0c5ce;">SocketError {
+    NoAvailableSockets,
+    SocketNotOpen,
+    UnableToOpen,
+    WriteError,
+    ReadError,
+}
+</span></code></pre>
+<p>And here's where we use our <code>TcpSocket</code> and <code>SocketError</code> and get into the <em>interior mutability</em>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;</span><span style="color:#b48ead;">&#39;a</span><span style="color:#c0c5ce;">, Tx&gt; TcpStack </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">NetworkStack&lt;</span><span style="color:#b48ead;">&#39;a</span><span style="color:#c0c5ce;">, Tx&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    Tx: Write&lt;</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">&gt;,
+{
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">TcpSocket = TcpSocket;
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Error = SocketError;
+
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">open</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">mode</span><span style="color:#c0c5ce;">: Mode) -&gt; Result&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">TcpSocket, </span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Error&gt; {
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> adapter = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.adapter.</span><span style="color:#96b5b4;">borrow_mut</span><span style="color:#c0c5ce;">();
+        Ok(TcpSocket {
+            link_id: adapter.</span><span style="color:#96b5b4;">open</span><span style="color:#c0c5ce;">()?,
+            mode,
+        })
+    }
+</span></code></pre>
+<p>While <code>open(...)</code> takes an immutable <code>self</code>, we can <code>borrow_mut()</code> the adapter we're holding. 
+We can then ask the adapter to open a socket for us (or it fails if all 5 are currently in-use)
+and we return our <code>TcpSocket</code> structure with the recently-opened <code>link_id</code>.</p>
+<h1 id="summary">Summary</h1>
+<p>There's a lot going on to simply open a socket, but when you do embedded, you have to bring a lot
+to the table, and like an onion (or a parfait), there's layers upon layers, and thankfully as you
+move up the stack, they get simpler and more reusable.</p>
+<p>Anyhow, if this seems interesting, here're some links:</p>
+<ul>
+<li><a href="https://crates.io/crates/drogue-network">drogue-network crate</a></li>
+<li><a href="https://crates.io/crates/drogue-esp8266">drogue-esp8266 crate</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/wifi-offload' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="embedded-nal-or-drogue-network" href="https://blog.drogue.io/wifi-offload/#embedded-nal-or-drogue-network">embedded-nal (or Drogue-Network)</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="let-s-look-at-the-traits" href="https://blog.drogue.io/wifi-offload/#let-s-look-at-the-traits">Let&#x27;s look at the traits...</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="interior-mutability" href="https://blog.drogue.io/wifi-offload/#interior-mutability">Interior mutability</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="let-s-talk-to-our-board" href="https://blog.drogue.io/wifi-offload/#let-s-talk-to-our-board">Let&#x27;s talk to our board...</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="wiring-up-the-interrupts" href="https://blog.drogue.io/wifi-offload/#wiring-up-the-interrupts">Wiring up the interrupts</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="ingress-bytes" href="https://blog.drogue.io/wifi-offload/#ingress-bytes">Ingress bytes</a>
+                </li>
+                
+                <li>
+                  <a data-for="process-bytes" href="https://blog.drogue.io/wifi-offload/#process-bytes">Process bytes</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="where-s-the-wifi-bucko" href="https://blog.drogue.io/wifi-offload/#where-s-the-wifi-bucko">Where&#x27;s the WiFi, bucko?</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="dig-into-the-implementation" href="https://blog.drogue.io/wifi-offload/#dig-into-the-implementation">Dig into the Implementation</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="summary" href="https://blog.drogue.io/wifi-offload/#summary">Summary</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

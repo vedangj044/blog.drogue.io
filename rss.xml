@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+      <title>Drogue IoT</title>
+        <link>https://blog.drogue.io/</link>
+        <description>IoT &amp; Rust</description>
+        <generator>Zola</generator>
+        <language>en</language>
+        <atom:link href="https://blog.drogue.io/rss.xml" rel="self" type="application/rss+xml"/>
+        <lastBuildDate>Tue, 02 Feb 2021 00:00:00 +0000</lastBuildDate>
+        <item>
+            <title>Introducing Drogue Device</title>
+            <pubDate>Tue, 02 Feb 2021 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/introducing-drogue-device/</link>
+            <guid>https://blog.drogue.io/introducing-drogue-device/</guid>
+            <description>&lt;p&gt;Trying to bring reusable and efficient components to embedded Rust has been a challenge for our team.
+We think we&#x27;ve started to make headway, and want to introduce the &lt;code&gt;Drogue Device&lt;&#x2F;code&gt; project.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Coming up: Google Summer of Code 2021</title>
+            <pubDate>Mon, 25 Jan 2021 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/coming-up-gsoc-2021/</link>
+            <guid>https://blog.drogue.io/coming-up-gsoc-2021/</guid>
+            <description>&lt;p&gt;Good news, everyone! &lt;a href=&quot;https:&#x2F;&#x2F;summerofcode.withgoogle.com&#x2F;&quot;&gt;Google Summer of Code&lt;&#x2F;a&gt; 2021 is coming up. This gives you
+the chance to throw yourself at some horrifying tech problems, learn some new skills, and maybe get to know a few more
+memes. We are participating, how about you?&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Command your devices</title>
+            <pubDate>Thu, 21 Jan 2021 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/command-your-devices/</link>
+            <guid>https://blog.drogue.io/command-your-devices/</guid>
+            <description>&lt;p&gt;So far when we talked about serverless IoT cloud we focused only on one way communication, devices sending &lt;em&gt;telemetry&lt;&#x2F;em&gt; data to the cloud.
+But in order to have a complete IoT solution, we need to be able to control our devices as well, by sending &lt;em&gt;commands&lt;&#x2F;em&gt; back to them.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Rust and LoRa</title>
+            <pubDate>Wed, 13 Jan 2021 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/rust-and-lora/</link>
+            <guid>https://blog.drogue.io/rust-and-lora/</guid>
+            <description>&lt;p&gt;LoRa is a low power long range wireless protocol that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, you can use Rust!&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>&quot;Hey Rodney, … restart console pods&quot;</title>
+            <pubDate>Fri, 18 Dec 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/hey-rodney/</link>
+            <guid>https://blog.drogue.io/hey-rodney/</guid>
+            <description>&lt;p&gt;Pushing temperature readings in JSON structures to the cloud is fun, but more fun is to restart your pods by saying:
+&amp;quot;Hey Rodney, …&amp;quot;. It also is a nice demo, and a good test, to see what fails when your &lt;code&gt;Content-Type&lt;&#x2F;code&gt; is &lt;code&gt;audio&#x2F;wav&lt;&#x2F;code&gt;
+instead of &lt;code&gt;application&#x2F;json&lt;&#x2F;code&gt;.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>More Rust &amp; Async (and hand-rolled PWM)</title>
+            <pubDate>Tue, 15 Dec 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/more-async-and-pwm/</link>
+            <guid>https://blog.drogue.io/more-async-and-pwm/</guid>
+            <description>&lt;p&gt;If we start living the async lifestyle, we can potentially get more
+use out of our limited hardware resources.  Maybe not, but it&#x27;s worth
+exploring. Let&#x27;s explore.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Rust on the BBC micro:bit</title>
+            <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/rust-and-microbit/</link>
+            <guid>https://blog.drogue.io/rust-and-microbit/</guid>
+            <description>&lt;p&gt;The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud!&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Rust and Async (on embedded devices)</title>
+            <pubDate>Wed, 09 Dec 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/rust-and-async/</link>
+            <guid>https://blog.drogue.io/rust-and-async/</guid>
+            <description>&lt;p&gt;&lt;code&gt;async&lt;&#x2F;code&gt;&#x2F;&lt;code&gt;await&lt;&#x2F;code&gt; within Rust is a convenient way to gain parallelism,
+even on an embedded device where we ostensibly have exactly one userland
+thread by default.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Testing IoT services with Minikube, Knative and Rust</title>
+            <pubDate>Tue, 01 Dec 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/minikube-roundtrip/</link>
+            <guid>https://blog.drogue.io/minikube-roundtrip/</guid>
+            <description>&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;minikube.sigs.k8s.io&#x2F;docs&#x2F;&quot;&gt;Minikube&lt;&#x2F;a&gt; is a convenient tool
+for developing cloud services on your laptop, but how can you access
+them from your IoT device? In this article, we&#x27;ll walk through
+deploying the
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;drogue-iot&#x2F;drogue-cloud&quot;&gt;drogue-cloud&lt;&#x2F;a&gt; project on
+minikube and then use some drogue crates to post data to its knative
+endpoint via an ESP8266 WiFi module.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Digital Twins, and how they can help</title>
+            <pubDate>Tue, 24 Nov 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/digital-twins/</link>
+            <guid>https://blog.drogue.io/digital-twins/</guid>
+            <description>&lt;p&gt;Exchanging messages with devices is great. As I tried to explain in the last blog post about
+&lt;a href=&quot;https:&#x2F;&#x2F;blog.drogue.io&#x2F;the-cloud-side-of-things&#x2F;&quot;&gt;the cloud side of things&lt;&#x2F;a&gt;, having a modular system, and
+normalizing the transport protocol can make things a lot easier. However, exchanging messages is only the first
+step towards an IoT application.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>The cloud side of things</title>
+            <pubDate>Tue, 10 Nov 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/the-cloud-side-of-things/</link>
+            <guid>https://blog.drogue.io/the-cloud-side-of-things/</guid>
+            <description>&lt;p&gt;Up until now, we have focused on &amp;quot;Rust on embedded devices&amp;quot;, at least when it comes to writing blog posts. Let&#x27;s
+change that.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Meet Rodney</title>
+            <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/meet-rodney/</link>
+            <guid>https://blog.drogue.io/meet-rodney/</guid>
+            <description>&lt;p&gt;&lt;em&gt;Non-technical post&lt;&#x2F;em&gt; -- Hey, we have a new logo!&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Motion &amp; MPU-6050</title>
+            <pubDate>Mon, 19 Oct 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/mpu-6050/</link>
+            <guid>https://blog.drogue.io/mpu-6050/</guid>
+            <description>&lt;p&gt;While the &lt;em&gt;S&lt;&#x2F;em&gt; in IoT stands for &amp;quot;security&amp;quot;, the &lt;em&gt;T&lt;&#x2F;em&gt; stands for &amp;quot;things&amp;quot;, and things move. 
+Wouldn&#x27;t it be nice to know how they move, exactly?&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Nom Parser</title>
+            <pubDate>Tue, 13 Oct 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/nom-parser/</link>
+            <guid>https://blog.drogue.io/nom-parser/</guid>
+            <description>&lt;p&gt;Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the &lt;a href=&quot;https:&#x2F;&#x2F;crates.io&#x2F;crates&#x2F;nom&quot;&gt;nom crate&lt;&#x2F;a&gt; brings &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Parser_combinator&quot;&gt;parser combinators&lt;&#x2F;a&gt; to the embedded Rust world.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>eS-WiFi and SPI</title>
+            <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/eswifi/</link>
+            <guid>https://blog.drogue.io/eswifi/</guid>
+            <description>&lt;p&gt;There&#x27;s a lot of variety in the embedded world. 
+While we&#x27;ve implemented the &lt;a href=&quot;&#x2F;wifi-offload&#x2F;&quot;&gt;ESP8266 WiFi-offload board over USART&lt;&#x2F;a&gt; last time, now we&#x27;re doing the &lt;a href=&quot;https:&#x2F;&#x2F;www.digikey.com&#x2F;en&#x2F;products&#x2F;detail&#x2F;inventek-systems&#x2F;ISM43362-M3G-L44-E-C6-2-1-8&#x2F;7070042&quot;&gt;Inventek eS-WiFi&lt;&#x2F;a&gt; over the SPI bus.
+Let&#x27;s explore some of the differences.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>It&#x27;s a Matter of Time</title>
+            <pubDate>Mon, 05 Oct 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/matter-of-time/</link>
+            <guid>https://blog.drogue.io/matter-of-time/</guid>
+            <description>&lt;p&gt;In the embedded world, quite often you don&#x27;t have a &lt;em&gt;wall clock&lt;&#x2F;em&gt; sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Creating an ESP programmer</title>
+            <pubDate>Fri, 18 Sep 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/esp-programmer/</link>
+            <guid>https://blog.drogue.io/esp-programmer/</guid>
+            <description>&lt;p&gt;Getting started with an &lt;a href=&quot;https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;ESP8266#Pinout_of_ESP-01&quot;&gt;ESP-01&lt;&#x2F;a&gt; isn&#x27;t one of the easiest
+things. At least if you are not used to embedded systems. It is a nice solution though to add Wi-Fi
+capabilities to an existing platform.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Down the Yak Hole of TLS</title>
+            <pubDate>Fri, 18 Sep 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/yak-hole-of-tls/</link>
+            <guid>https://blog.drogue.io/yak-hole-of-tls/</guid>
+            <description>&lt;p&gt;We&#x27;ve recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP&#x2F;IP, helping protect data in-flight between two parties.
+There&#x27;s a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let&#x27;s dive in, shall we?&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>WiFi Offloading</title>
+            <pubDate>Mon, 24 Aug 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/wifi-offload/</link>
+            <guid>https://blog.drogue.io/wifi-offload/</guid>
+            <description>&lt;p&gt;My recent work has been around Cortex-M embedded development using Rust and &lt;a href=&quot;https:&#x2F;&#x2F;rtic.rs&#x2F;&quot;&gt;RTIC&lt;&#x2F;a&gt;.
+I&#x27;m using a handy little development board in the form of the &lt;a href=&quot;https:&#x2F;&#x2F;www.digikey.com&#x2F;product-detail&#x2F;en&#x2F;stmicroelectronics&#x2F;NUCLEO-F401RE&#x2F;497-14360-ND&#x2F;4695525&quot;&gt;STM Nucleo-F401RE&lt;&#x2F;a&gt;.
+Unfortunately, it&#x27;s handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.&lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>Rust Embedded Layer Cake</title>
+            <pubDate>Tue, 11 Aug 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/rust-embedded-layer-cake/</link>
+            <guid>https://blog.drogue.io/rust-embedded-layer-cake/</guid>
+            <description>&lt;p&gt;As noted in the first post, I&#x27;m working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. &lt;&#x2F;p&gt;
+</description>
+        </item>
+        <item>
+            <title>First Steps in IoT</title>
+            <pubDate>Mon, 03 Aug 2020 00:00:00 +0000</pubDate>
+            <link>https://blog.drogue.io/first-steps-in-iot/</link>
+            <guid>https://blog.drogue.io/first-steps-in-iot/</guid>
+            <description>&lt;p&gt;Welcome to the &lt;em&gt;Drogue IoT&lt;&#x2F;em&gt; blog. This is where I intend to document 
+my progress through discovering how to build enterprise-grade IoT device
+systems using Rust and ARM Cortex-M MCUs.&lt;&#x2F;p&gt;
+</description>
+        </item>
+    </channel>
+</rss>

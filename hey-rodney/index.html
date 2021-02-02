@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>&quot;Hey Rodney, … restart console pods&quot; &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Creating a voice assistant with Drogue IoT, Knative, and a few others, learning some lessons on the way.">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="&quot;Hey Rodney, … restart console pods&quot;" />
+<meta name="twitter:description" content="Creating a voice assistant with Drogue IoT, Knative, and a few others, learning some lessons on the way.">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="&quot;Hey Rodney, … restart console pods&quot;">
+<meta property="og:url" content="https://blog.drogue.io/hey-rodney">
+<meta property="og:description" content="Creating a voice assistant with Drogue IoT, Knative, and a few others, learning some lessons on the way.">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">&quot;Hey Rodney, … restart console pods&quot;</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1404">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-18'>18 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;hey-rodney&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Pushing temperature readings in JSON structures to the cloud is fun, but more fun is to restart your pods by saying:
+&quot;Hey Rodney, …&quot;. It also is a nice demo, and a good test, to see what fails when your <code>Content-Type</code> is <code>audio/wav</code>
+instead of <code>application/json</code>.</p>
+<span id="continue-reading"></span>
+<p>I tried to create a very basic voice assistant during last years holiday seasons. Letting the kids come up with ideas
+for some interactions, coming up with some funny responses. The project failed miserably, as most of the services around
+that turned out to have some serious flaw. Performing wake word detection and speech recognition is challenge, so I
+was looking out for some existing solutions already. However, my aspiration was still to assemble the different components
+myself, rather than simply installing a ready-to-run solution like <a href="https://mycroft.ai/">Mycroft</a>.</p>
+<h2 id="restarting-pods">Restarting pods</h2>
+<p>While working on the web console, I had to restart the pods a few times. I can turn on my lights with a voice command,
+while typing code at the same time. So why can't I restart the container pods that way? Besides, I was looking for
+some use case of processing non-JSON payload, running some &quot;edge&quot; agent with some &quot;processing&quot; workflow, and some
+cloud -side analytics. Turns out, a voice assistant has all of those requirements, and I had a little bit of experience
+from last year's failure.</p>
+<h2 id="the-setup">The setup</h2>
+<p>The task feels rather simple:</p>
+<ul>
+<li>Listen for a wake word or phrase (&quot;Hey Rodney&quot;, though Star Trek fans might prefer &quot;computer&quot;).</li>
+<li>Recognize words after the wake-word, until some stop condition is reached</li>
+<li>Evaluate the actions to take</li>
+<li>Perform the evaluated actions, possibly giving some acoustic feedback (&quot;I'm sorry Dave, I'm afraid I can't do that.&quot;)</li>
+</ul>
+<p>Sounds easy, eh?</p>
+<h3 id="wake-word-detection">Wake word detection</h3>
+<p>I started with <a href="https://github.com/MycroftAI/mycroft-precise">Mycroft Precise</a>, an open source wake word listener. It
+is a nightmare to build that. Outdated Python dependencies, a poorly maintained repository, a broken build, and some
+forks trying to fix that. Also, it would have been necessary to train our own model for having our own wake-word.
+However, I didn't want to become an expert on machine learning just yet.</p>
+<p>The predecessor for Mycroft was <a href="https://github.com/cmusphinx/pocketsphinx">Pocketsphinx</a>, as research project of the
+Carnegie Mellon University. If has some Python bindings that made my life easier, and it also has a dictionary, which
+allows you to provide keywords in text form, rather than requiring you to train your own model. The downside is, it
+is not as accurate, but I assumed it is good enough for our use case.</p>
+<p>It also has the capability to detect &quot;silence&quot;, so it was easy to implement a logic of:</p>
+<ul>
+<li>Wait for the wake-word</li>
+<li>Start recording</li>
+<li>Record at least x seconds, stop when detecting silence or more than y seconds have passed</li>
+<li>Send recording to the cloud</li>
+</ul>
+<p>Sending that to the cloud side was rather easy with the Drogue IoT setup that I already had. So the data ends up
+in a Kafka stream, encoded as a Cloud Event with a content type of <code>audio/wav</code>, ready to be processed.</p>
+<h3 id="speech-to-text">Speech-to-text</h3>
+<p>I didn't want to start with speech-to-text transformation on a Raspberry Pi. I tried out
+<a href="https://alphacephei.com/vosk/">Vosk</a>, which is based on <a href="https://kaldi-asr.org/">Kaldi</a>, however the speech
+recognition was far from optimal. I just gave up on that and picked a service I had played with before:
+<a href="https://cloud.ibm.com/apidocs/speech-to-text">IBM Watson Speech-to-Text</a>.</p>
+<p>As events already get processed through Knative eventing, it is easy to replace any of the components in play:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-yaml" data-lang="yaml"><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">flows.knative.dev/v1
+kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Sequence
+metadata</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">hey-rodney
+spec</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">channelTemplate</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">…
+  steps</span><span style="color:#c0c5ce;">:
+    - </span><span style="color:#bf616a;">ref</span><span style="color:#c0c5ce;">:
+        </span><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">serving.knative.dev/v1
+        kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Service
+        name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">watson-stt-converter
+  reply</span><span style="color:#c0c5ce;">:
+    </span><span style="color:#bf616a;">ref</span><span style="color:#c0c5ce;">:
+      </span><span style="color:#bf616a;">kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Service
+      apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">serving.knative.dev/v1
+      name</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">hey-rodney-backend
+</span></code></pre>
+<p>The functionality is in the <a href="https://github.com/orgs/drogue-iot/packages/container/package/watson-speech-to-text-converter">watson-speech-to-text-converter </a>
+container. It simply is converting audio events to JSON events, and I think it would be fun to see this replaced with
+an open source version.</p>
+<h3 id="evaluating-commands">Evaluating commands</h3>
+<p>My goal was to restart container pods. So yes, I did take a nasty shortcut. <a href="https://github.com/drogue-iot/hey-rodney-backend">A simple Quarkus application</a>
+which does some regular expression matching in the incoming transcribed audio, and executes the configured commands:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-yaml" data-lang="yaml"><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">v1
+kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">ConfigMap
+metadata</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">hey-rodney-config
+data</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">rules.yaml</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">|
+</span><span style="color:#a3be8c;">    rules:
+      - matcher: restart console (pods|parts|pots|ports|plots)
+        commands:
+          - execute: [ &quot;kubectl&quot;, &quot;delete&quot;, &quot;pods&quot;, &quot;-l&quot;, &quot;app=console-backend&quot;]
+          - execute: [ &quot;kubectl&quot;, &quot;delete&quot;, &quot;pods&quot;, &quot;-l&quot;, &quot;app=console-frontend&quot;]
+</span></code></pre>
+<p>If you think that is a crude way of doing things, I absolutely agree. PRs welcome 😁</p>
+<h2 id="lessons-learned">Lessons learned</h2>
+<p>Processing audio is much harder than anticipated. The right microphone, the best wake-word solution, timing, struggles
+with ALSA and passing in audio devices to containers. The demo leaves much room for improvement. On the other side,
+the demo is just that: a demo.</p>
+<h3 id="compressing-payload">Compressing payload</h3>
+<p>Cloud Events proposes to <a href="https://github.com/cloudevents/spec/blob/v1.0.1/spec.md#size-limits">keep events compact</a>,
+and proposes a limit of 64 KiB. That may just be a little too much for a few seconds of 16 kHz audio.</p>
+<p>However, there is the <a href="https://opus-codec.org/">OPUS codec</a>, an open and royalty-free audio codec, for speech amongst
+other things. A Raspberry Pi 4 can encode the few seconds of audio in around 200ms:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">Recorded 4.9 seconds of audio
+Encoding time: 0.2 s
+Payload size: 9.7KiB
+</span></code></pre>
+<p>Compared to the original size of the audio, this is a significant improvement:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">Recorded 4.9 seconds of audio
+Payload size: 162.7KiB
+</span></code></pre><h3 id="modularity-through-knative-eventing">Modularity through Knative eventing</h3>
+<p>Using Knative eventing, and more specifically Cloud Events made things much simpler. Re-using the HTTP endpoint for
+ingesting payload from the device, the speech-to-text container, the custom Quarkus application. All wired up using
+YAML from inside Kubernetes. It also makes testing different components much simpler. Instead of orchestrating a
+big system test, with all kinds of messaging components, only a few, simple HTTP based tests are required, and you can
+test each component in isolation.</p>
+<p><img src="https://blog.drogue.io/hey-rodney/architecture.svg" alt="Architecture" /></p>
+<h3 id="scaling-down-to-zero-can-get-in-your-way">Scaling down to zero can get in your way</h3>
+<p>Scaling down to zero is great, but not when it comes to creating a voice assistant. Spinning up pods with Rust and
+Quarkus native is rather quick. Still, it takes a few milliseconds here and there and feels like a big lag. Yes, there
+is a simple solution to that, don't scale down to zero 😉. If latency is important to you, you can still have all the
+benefits.</p>
+<h2 id="what-s-next">What's next</h2>
+<p>Currently, there is no way to response back to a device. &quot;Command &amp; control&quot; is a feature that we are currently working
+on. A first version has already landed in the <code>main</code> branch, but it is too early to work with that already. This means
+that it is also not possible yet to send some audio back to the speaker. However, once we have C&amp;C, sending JSON back
+the chain, converting from text to speech, shouldn't be a big deal with the setup we have. The beauty of Cloud Events.</p>
+<p>Please don't forget: this is just an example. We don't want to replicate a solution like Mycroft. So, there are no real
+plans on &quot;what to do next&quot;.</p>
+<p>Then again: It would be great to bring this solution on some embedded device. Tensorflow Lite runs on microcontrollers
+as well. So we could port the wake-word and audio-snippet-recording part to some embedded device, and keep the
+rest of the pipeline as is. Maybe you are interested in a Google Summer of Code project: <a href="https://docs.jboss.org/display/GSOC/Google+Summer+of+Code+2021+Ideas">Implement &quot;Hey Rodney&quot; Drogue IoT demo using Tensorflow (Lite)</a> 😉. </p>
+<h2 id="mission-accomplished">Mission accomplished?</h2>
+<p>Kind of. It was fun, I learned a lot! It sits there, runs on a Raspberry Pi, and after a few attempts, it restarts
+the console pods. Accuracy could be much better. Then again, that lets you have more respect for the smart speaker
+you might have at home.</p>
+<p>If you want to replicate this, bring some time and patience, and take a look at the links below.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="https://github.com/drogue-iot/hey-rodney">hey-rodney repository</a></li>
+<li><a href="https://github.com/drogue-iot/hey-rodney-backend">hey-rodney-backend repository</a></li>
+<li><a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud repository</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/hey-rodney' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="restarting-pods" href="https://blog.drogue.io/hey-rodney/#restarting-pods">Restarting pods</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="the-setup" href="https://blog.drogue.io/hey-rodney/#the-setup">The setup</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="wake-word-detection" href="https://blog.drogue.io/hey-rodney/#wake-word-detection">Wake word detection</a>
+                </li>
+                
+                <li>
+                  <a data-for="speech-to-text" href="https://blog.drogue.io/hey-rodney/#speech-to-text">Speech-to-text</a>
+                </li>
+                
+                <li>
+                  <a data-for="evaluating-commands" href="https://blog.drogue.io/hey-rodney/#evaluating-commands">Evaluating commands</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="lessons-learned" href="https://blog.drogue.io/hey-rodney/#lessons-learned">Lessons learned</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="compressing-payload" href="https://blog.drogue.io/hey-rodney/#compressing-payload">Compressing payload</a>
+                </li>
+                
+                <li>
+                  <a data-for="modularity-through-knative-eventing" href="https://blog.drogue.io/hey-rodney/#modularity-through-knative-eventing">Modularity through Knative eventing</a>
+                </li>
+                
+                <li>
+                  <a data-for="scaling-down-to-zero-can-get-in-your-way" href="https://blog.drogue.io/hey-rodney/#scaling-down-to-zero-can-get-in-your-way">Scaling down to zero can get in your way</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="what-s-next" href="https://blog.drogue.io/hey-rodney/#what-s-next">What&#x27;s next</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="mission-accomplished" href="https://blog.drogue.io/hey-rodney/#mission-accomplished">Mission accomplished?</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="see-also" href="https://blog.drogue.io/hey-rodney/#see-also">See also</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

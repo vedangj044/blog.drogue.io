@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Digital Twins, and how they can help &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="A quick introduction in digital twins, what they offer and how they can be used in the context of Drogue IoT">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Digital Twins, and how they can help" />
+<meta name="twitter:description" content="A quick introduction in digital twins, what they offer and how they can be used in the context of Drogue IoT">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Digital Twins, and how they can help">
+<meta property="og:url" content="https://blog.drogue.io/digital-twins">
+<meta property="og:description" content="A quick introduction in digital twins, what they offer and how they can be used in the context of Drogue IoT">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Digital Twins, and how they can help</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>9 minute read</span>
+        <meta itemprop="wordCount" content="1625">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-11-24'>24 November 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;digital-twins&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Exchanging messages with devices is great. As I tried to explain in the last blog post about
+<a href="https://blog.drogue.io/the-cloud-side-of-things/">the cloud side of things</a>, having a modular system, and
+normalizing the transport protocol can make things a lot easier. However, exchanging messages is only the first
+step towards an IoT application.</p>
+<span id="continue-reading"></span><h2 id="blinkedy-blink">Blinkedy blink</h2>
+<p>Maybe you noticed, maybe not … but Rodney blinks, every now and then. Just like devices send data, every now and then.
+And it is easy for devices to implement that. A change happens, message sent. That's it.</p>
+<p>However, on the consuming side of those changes, receiving the information of a change is equally important as the
+current state of the device. Or maybe event group of devices.</p>
+<p>Just to visualize what I mean. I bet you did take a look Rodney a few seconds back. What you saw, was:</p>
+<p><img src="https://blog.drogue.io/digital-twins/rodney.png" alt="Blinking" /></p>
+<p>Now you are the process, consuming on the cloud side, and the image is the overall state of your device. You expect
+the see the full picture, literally. Just assume what it would look like, not having the previous state, only the
+changes:</p>
+<p><img src="https://blog.drogue.io/digital-twins/rodney_diff.png" alt="Blinking" /></p>
+<p>It would start out blank, because you never had the initial state. Then, it would change, but the change itself doesn't
+make any sense. Neither would the change back.</p>
+<p>For the device, it would be convenient tough, to only the most recent change. For the network that would be easier to
+handle as well, as it means less data.</p>
+<p>However, for the consuming side, it would be harder to process. Because the information about the <em>current state</em> is
+not easily available.</p>
+<h2 id="current-state">Current state</h2>
+<p>Let's take a simple dashboard as an example, showing the most recent temperate value. That is easy to implement with
+our current example application. The <em>most recent</em> state of that sensor is always available in our time series database.</p>
+<p>Assuming a more complex example, of a more complex device, with much more data. We cannot push everything into a
+time series database. That would take up too much space and would also be not feasible for some of the data formats.</p>
+<p>So we do need some kind of storage, which persists the <em>last known</em> state of a device. And you need a way to keep
+the data fresh.</p>
+<h2 id="digital-twin">Digital Twin</h2>
+<p>This is where the concept of a <em>digital twin</em> comes into play. Taking a look at Wikipedia:</p>
+<blockquote>
+<p>A digital twin is a digital replica of a living or non-living physical entity</p>
+</blockquote>
+<p>This is what many use cases require on the IoT application side. To have a digital representation of your device, 
+ideally with some <em>magic</em> that keeps the data fresh, providing easy access to it.</p>
+<p>An important part of this is to know the data structure of your device/entity. In most cases you will have a
+bigger, overall data structure. However, you cannot always transmit the full set of information when changes occur.
+That is why you need to transmit deltas, in order to keep traffic low. Digital twins help you to structure your device
+data, and with that, allow you to more easily implement delta
+updates.</p>
+<h2 id="but-wait-there-is-more">But wait, there is more</h2>
+<p>Delta update is one aspect a digital twin can help with. With a structured data model, you can also start to
+normalize data. Maybe define what sensors you have, what actuators, what state they provide, and what operations
+they can perform. This would allow you to map your different payload structures into re-usable schemas, and re-use
+code that works with the data as well.</p>
+<p>Having a structured data model would of course also allow for providing a structured API for your devices. Making it
+easy to interact with them from the cloud side. It also allows to introspec devices, and let users explore devices
+capabilities.</p>
+<p>Based on a formal device model, it would also be possible to create some tooling around that. For example in the area
+of visualization and mapping. </p>
+<h2 id="how-do-we-get-there">How do we get there?</h2>
+<p>So ideally we would need a way to describe device's data models, a system to store the information in these structures,
+a way to interact with that data in a structured way, and an easy way to translate between our device's payload formats
+and the defined models.</p>
+<p>Let's take a look at <a href="https://eclipse.org/vorto">Eclipse Vorto</a> and <a href="https://eclipse.org/ditto">Eclipse Ditto</a>.</p>
+<p>Vorto describes itself as:</p>
+<blockquote>
+<p>Language for Digital Twins</p>
+</blockquote>
+<p>And Ditto:</p>
+<blockquote>
+<p>… where IoT devices and their digital twins get together</p>
+</blockquote>
+<p>Sounds like a perfect match. No wonder, both communities work together closely, in order to implement a digital twin
+solution.</p>
+<h2 id="an-example">An example</h2>
+<p>So, let's try integrating this into our cloud side deployment. Currently, our <em>example</em> temperature sensor posts
+JSON snippets like this:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-json" data-lang="json"><span style="color:#c0c5ce;">{ &quot;</span><span style="color:#a3be8c;">temp</span><span style="color:#c0c5ce;">&quot;: </span><span style="color:#d08770;">1.23 </span><span style="color:#c0c5ce;">}
+</span></code></pre>
+<p>Very simple and easy to handle. If we would describe this as a Vorto model, this could look like this:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">vortolang 1.0
+namespace io.drogue.demo
+version 1.0.0
+displayname &quot;FirstTestDevice&quot;
+description &quot;Information Model for FirstTestDevice&quot;
+
+using org.eclipse.vorto.std.sensor.TemperatureSensor ; 1.0.0
+
+infomodel FirstTestDevice {
+
+	functionblocks {
+	    mandatory temperature as TemperatureSensor
+	}
+
+}
+</span></code></pre>
+<p>More verbose, true. However, we also get a bunch of features with that. Like versioning, referencing existing data types,
+validation, etc. As you can see, we are not defining our own temperature sensor, but already re-use a standard Vorto
+model for that: <code>org.eclipse.vorto.std.sensor.TemperatureSensor</code>.</p>
+<p>The <a href="https://vorto.eclipse.org">public Vorto repository</a> already contains a bunch of models. Like the code that runs the
+repository, the models can be open source as well. Of course, you can also host how own instance, if that is what
+you need. But let's re-use the public instance for your example. Our model is published as
+<a href="https://vorto.eclipse.org/#/details/io.drogue.demo:FirstTestDevice:1.0.0">io.drogue.demo:FirstTestDevice:1.0.0</a>.</p>
+<p>If you have deployed the <a href="https://github.com/drogue-iot/drogue-cloud/blob/main/deploy/digitial-twin.adoc">digital twin</a>
+component from <a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud</a>, then you can create a new device in the
+Ditto repository like this:</p>
+<ul>
+<li>
+<p>Export the device model from the public repository:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">MODEL_ID=io.drogue.demo:FirstTestDevice:1.0.0
+</span><span style="color:#c0c5ce;">http -do FirstTestDevice.json https://vorto.eclipse.org/api/v1/generators/eclipseditto/models/$MODEL_ID/?target=thingJson
+</span></code></pre></li>
+<li>
+<p>Create a new device in Ditto, based on this model:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">DEVICE_ID=my:dev1
+</span><span style="color:#c0c5ce;">TWIN_API=&quot;https://ditto:ditto@ditto-console-drogue-iot.apps.my.cluster&quot;
+</span><span style="color:#c0c5ce;">
+</span><span style="color:#c0c5ce;">cat FirstTestDevice.json | http PUT &quot;$TWIN_API/api/2/things/$DEVICE_ID&quot;
+</span></code></pre></li>
+</ul>
+<p>Now the Ditto instance is ready to receive updates for this device, in the Ditto Protocol JSON format.</p>
+<h2 id="mapping-data">Mapping data</h2>
+<p>One feature of the Vorto repository is, that it can help you create a mapping model for your device model:</p>
+<p><img src="https://blog.drogue.io/digital-twins/vorto-mapper.svg" alt="Mapper example" /></p>
+<p>You provide some example data from your device, and fill in expression where to find that data. You can even test the
+mapping directly and check the results.</p>
+<p>Once you have created the mapping, we need to inject this into our event processing. Now, the modularity and
+flexibility of Knative come into play.</p>
+<p>Let's assume we pull events from a Kafka source:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-yaml" data-lang="yaml"><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">sources.knative.dev/v1alpha1
+kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">KafkaSource
+metadata</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">digital-twin-kafka-source
+spec</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">consumerGroup</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">digital-twin
+  bootstrapServers</span><span style="color:#c0c5ce;">:
+    - </span><span style="color:#bf616a;">kafka-eventing-kafka-bootstrap.knative-eventing.svc:9092
+  topics</span><span style="color:#c0c5ce;">:
+    - </span><span style="color:#bf616a;">knative-messaging-kafka.drogue-iot.iot-channel
+  sink</span><span style="color:#c0c5ce;">:
+    </span><span style="color:#bf616a;">ref</span><span style="color:#c0c5ce;">:
+      </span><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">flows.knative.dev/v1
+      kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Sequence
+      name</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">digital-twin
+</span></code></pre>
+<p>Forward it to the following sequence:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-yaml" data-lang="yaml"><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">flows.knative.dev/v1
+kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Sequence
+metadata</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">digital-twin
+spec</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">channelTemplate</span><span style="color:#c0c5ce;">:
+    </span><span style="color:#bf616a;">…
+  steps</span><span style="color:#c0c5ce;">:
+  - </span><span style="color:#bf616a;">ref</span><span style="color:#c0c5ce;">:
+      </span><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">serving.knative.dev/v1
+      kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Service
+      name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">vorto-converter
+      namespace</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">drogue-iot
+  reply</span><span style="color:#c0c5ce;">:
+    </span><span style="color:#bf616a;">ref</span><span style="color:#c0c5ce;">:
+      </span><span style="color:#bf616a;">kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Service
+      apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">serving.knative.dev/v1
+      name</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">ditto-pusher
+</span></code></pre>
+<p>The <code>vorto-converter</code> being a Knative service defined as:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-yaml" data-lang="yaml"><span style="color:#bf616a;">apiVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">serving.knative.dev/v1
+kind</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">Service
+metadata</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#bf616a;">vorto-converter
+spec</span><span style="color:#c0c5ce;">:
+  </span><span style="color:#bf616a;">template</span><span style="color:#c0c5ce;">:
+    </span><span style="color:#bf616a;">spec</span><span style="color:#c0c5ce;">:
+      </span><span style="color:#bf616a;">containers</span><span style="color:#c0c5ce;">:
+        - </span><span style="color:#bf616a;">image</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">ghcr.io/drogue-iot/vorto-converter:0.1.1
+</span></code></pre>
+<p>Then that would consume the original device payload from a Kafka topic, and look up the data mapper in the Vorto
+repository, based on a cloud events extension, containing the <em>model id</em>. The converter is a simple Knative service,
+based on Quarkus, and can be scaled up as required. The result of this would look like:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-json" data-lang="json"><span style="color:#c0c5ce;">{
+  &quot;</span><span style="color:#a3be8c;">headers</span><span style="color:#c0c5ce;">&quot;:{
+    &quot;</span><span style="color:#a3be8c;">response-required</span><span style="color:#c0c5ce;">&quot;:</span><span style="color:#d08770;">false
+  </span><span style="color:#c0c5ce;">},
+  &quot;</span><span style="color:#a3be8c;">path</span><span style="color:#c0c5ce;">&quot;:&quot;</span><span style="color:#a3be8c;">/features</span><span style="color:#c0c5ce;">&quot;,
+  &quot;</span><span style="color:#a3be8c;">topic</span><span style="color:#c0c5ce;">&quot;:&quot;</span><span style="color:#a3be8c;">my/dev1/things/twin/commands/modify</span><span style="color:#c0c5ce;">&quot;,
+  &quot;</span><span style="color:#a3be8c;">value</span><span style="color:#c0c5ce;">&quot;:{
+    &quot;</span><span style="color:#a3be8c;">temperature</span><span style="color:#c0c5ce;">&quot;:{
+      &quot;</span><span style="color:#a3be8c;">definition</span><span style="color:#c0c5ce;">&quot;:[
+        &quot;</span><span style="color:#a3be8c;">org.eclipse.vorto.std.sensor:TemperatureSensor:1.0.0</span><span style="color:#c0c5ce;">&quot;
+      ],
+      &quot;</span><span style="color:#a3be8c;">properties</span><span style="color:#c0c5ce;">&quot;:{
+        &quot;</span><span style="color:#a3be8c;">status</span><span style="color:#c0c5ce;">&quot;:{
+          &quot;</span><span style="color:#a3be8c;">value</span><span style="color:#c0c5ce;">&quot;: </span><span style="color:#d08770;">1.23
+        </span><span style="color:#c0c5ce;">}
+      }
+    }
+  }
+}
+</span></code></pre>
+<p>As you can see from the &quot;modify&quot; command, this is already intended to partially update the model, based on the
+new information. The result would look like:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-json" data-lang="json"><span style="color:#c0c5ce;">{
+    &quot;</span><span style="color:#a3be8c;">attributes</span><span style="color:#c0c5ce;">&quot;: {
+        &quot;</span><span style="color:#a3be8c;">modelDisplayName</span><span style="color:#c0c5ce;">&quot;: &quot;</span><span style="color:#a3be8c;">FirstTestDevice</span><span style="color:#c0c5ce;">&quot;
+    },
+    &quot;</span><span style="color:#a3be8c;">definition</span><span style="color:#c0c5ce;">&quot;: &quot;</span><span style="color:#a3be8c;">io.drogue.demo:FirstTestDevice:1.0.0</span><span style="color:#c0c5ce;">&quot;,
+    &quot;</span><span style="color:#a3be8c;">features</span><span style="color:#c0c5ce;">&quot;: {
+        &quot;</span><span style="color:#a3be8c;">temperature</span><span style="color:#c0c5ce;">&quot;: {
+            &quot;</span><span style="color:#a3be8c;">definition</span><span style="color:#c0c5ce;">&quot;: [
+                &quot;</span><span style="color:#a3be8c;">org.eclipse.vorto.std.sensor:TemperatureSensor:1.0.0</span><span style="color:#c0c5ce;">&quot;
+            ],
+            &quot;</span><span style="color:#a3be8c;">properties</span><span style="color:#c0c5ce;">&quot;: {
+                &quot;</span><span style="color:#a3be8c;">status</span><span style="color:#c0c5ce;">&quot;: {
+                    &quot;</span><span style="color:#a3be8c;">value</span><span style="color:#c0c5ce;">&quot;: </span><span style="color:#d08770;">1.23
+                </span><span style="color:#c0c5ce;">}
+            }
+        }
+    },
+    &quot;</span><span style="color:#a3be8c;">policyId</span><span style="color:#c0c5ce;">&quot;: &quot;</span><span style="color:#a3be8c;">my:dev1</span><span style="color:#c0c5ce;">&quot;,
+    &quot;</span><span style="color:#a3be8c;">thingId</span><span style="color:#c0c5ce;">&quot;: &quot;</span><span style="color:#a3be8c;">my:dev1</span><span style="color:#c0c5ce;">&quot;
+}
+</span></code></pre>
+<p>As it is a simple model, with only one status value, it doesn't look that different, but I hope you get the idea.</p>
+<h2 id="developing">Developing</h2>
+<p>Getting the status of a device is easy now. A simple HTTP call is sufficient, and we can get the most recent device
+state, including all information that our device supports. We have a structured data model, which we can use to build
+tooling and application on, which helps us validate and map the payload that comes from our devices.</p>
+<p>Additionally, we can also start to search for things like &quot;all sensors reporting 5 °C or more&quot;, with
+a query like: <code>ge(features/temperature/properties/status/value,5.0)</code>. So not only can we store device state,
+we can also use it to find devices, based on their current state.</p>
+<h2 id="what-s-next">What's next</h2>
+<p>I hope I was able to explain a bit, why the initial overhead of setting up a system like this makes sens, and what
+the benefits are. To be fair, Knative helps lot getting this deployed on your Kubernetes cluster.</p>
+<p>There is a lot more you can do with Digital Twins, reconciling <em>desired</em> vs <em>actual</em> state for example. But, I will
+leave that for a future blog post.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud repository</a></li>
+<li><a href="https://eclipse.org/ditto">Eclipse Ditto</a> </li>
+<li><a href="https://eclipse.org/vorto">Eclipse Vorto</a></li>
+<li><a href="https://vorto.eclipse.org">Public Vorto instance</a></li>
+<li><a href="https://github.com/drogue-iot/drogue-vorto-converter">drogue-vorto-converter repository</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/digital-twins' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="blinkedy-blink" href="https://blog.drogue.io/digital-twins/#blinkedy-blink">Blinkedy blink</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="current-state" href="https://blog.drogue.io/digital-twins/#current-state">Current state</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="digital-twin" href="https://blog.drogue.io/digital-twins/#digital-twin">Digital Twin</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="but-wait-there-is-more" href="https://blog.drogue.io/digital-twins/#but-wait-there-is-more">But wait, there is more</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="how-do-we-get-there" href="https://blog.drogue.io/digital-twins/#how-do-we-get-there">How do we get there?</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="an-example" href="https://blog.drogue.io/digital-twins/#an-example">An example</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="mapping-data" href="https://blog.drogue.io/digital-twins/#mapping-data">Mapping data</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="developing" href="https://blog.drogue.io/digital-twins/#developing">Developing</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="what-s-next" href="https://blog.drogue.io/digital-twins/#what-s-next">What&#x27;s next</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="see-also" href="https://blog.drogue.io/digital-twins/#see-also">See also</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

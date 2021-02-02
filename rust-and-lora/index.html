@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Rust and LoRa &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="LoRa is a low power long range wireless that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, of course you can use Rust with LoRa.">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Rust and LoRa" />
+<meta name="twitter:description" content="LoRa is a low power long range wireless that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, of course you can use Rust with LoRa.">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Rust and LoRa">
+<meta property="og:url" content="https://blog.drogue.io/rust-and-lora">
+<meta property="og:description" content="LoRa is a low power long range wireless that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, of course you can use Rust with LoRa.">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Rust and LoRa</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1512">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-01-13'>13 January 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-lora&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>LoRa is a low power long range wireless protocol that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, you can use Rust!</p>
+<span id="continue-reading"></span>
+<p>In the LoRa stack, you have a LoRa node talking to LoRaWAN gateways, talking to a cloud service. Multiple LoRaWAN Gateways operate as a network, and a LoRa node can reach a gateway several kilometers away. The gateways are connected to a network server provided by companies such as <a href="https://thethingsindustries.com/">The Things Industries</a> which offer a free plan as part of <a href="https://www.thethingsnetwork.org">The Things Network (TTN)</a>.</p>
+<h1 id="lora-gateways">LoRa Gateways</h1>
+<p>You can get gateways with different capabilities and production-readiness, but if you don't mind tinkering a bit, the RAK831 Gateway expansion for the Raspberry Pi is a good start. There are several options listed <a href="https://www.thethingsnetwork.org/docs/gateways/">here</a>. </p>
+<p>Once you have a gateway-capable device, you may configure the gateway to connect to and forward packets to a network server. The original packet forwarder from Semtech is UDP-based and does not support any authentication or encryption of data. For this reason, it is being replaced by different alternative protocols, such as TTN, or one from the <a href="https://www.chirpstack.io/">ChirpStack</a> architecture. Either way, what you end up using depends on the gateway you have and what it can support. </p>
+<p>For my usage, I decided to use the original UDP packet forwarder from Semtech, as the downsides were not that important for my initial experiments. There are several guides for setting up the RAK811 on a RaspBerry Pi <a href="https://www.hackster.io/naresh-krish/getting-started-with-the-rak811-lora-node-67f157">out there</a>, so I won't cover that part.</p>
+<h1 id="lora-network">LoRa Network</h1>
+<p>One of the nice things with LoRa is that you can control both the gateway and the network server, as there are <a href="https://www.chirpstack.io/">open source</a> servers that you can self-host. However, for getting started it might be be easier to connect to some existing network server that offers device management for you.</p>
+<p>In my initial experiments, I created an account at TTN, and registered my gateway. So if you happen to live in my area within the range of my gateway <em>and</em> have a TTN application, you should be able to connect to TTN via my gateway, which is an interesting way to developing network coverage with private citizens acting as telcos.</p>
+<p><img src="https://blog.drogue.io/rust-and-lora/ttn_gateway.png" alt="gateway" /></p>
+<p>Once the gateway is registered, you can create an application. In LoRa, an application is a way to group devices allowing them to share credentials using the application EUI (unique identifier) and an application key (secret). The application also registered a handler, which is located in TTNs datacenter where sensor data will eventually be sent.</p>
+<p><img src="https://blog.drogue.io/rust-and-lora/ttn_app.png" alt="app" /></p>
+<p>Once the application is registered, you can register one or more devices for that application. A device needs to be activated either using OTAA (Over The Air Activation) or using ABP (Activation By Personalization). With OTAA there is a handshake between the device and the network using the application EUI and secret in order to derive the session key. With ABP, there is not handshake and the session key is hardcoded. Therefore, OTAA is regarded as more secure, but requires the network server to support the handshaking.</p>
+<p>The device is identified by its own EUI (unique identifier) in the same was as an application, but there is not per-device key.</p>
+<p><img src="https://blog.drogue.io/rust-and-lora/ttn_device.png" alt="dev" /></p>
+<p>With this, the network configuration is complete, and we can proceed with configuring the LoRa node.</p>
+<h1 id="lora-node">LoRa Node</h1>
+<p>LoRa nodes also comes in several configurations, but personally I have only used the <a href="https://store.rakwireless.com/products/rak811-lpwan-module">RAK811</a>-class of devices, which out of the box have an AT command firmware available to talk to the <a href="https://www.semtech.com/products/wireless-rf/lora-transceivers">Semtech SX127x</a> LoRa radio.</p>
+<p>For my initial exploration into LoRa and Rust, I ordered a micro:bit breakout board from <a href="https://uk.pi-supply.com/products/iot-micro-bit-lora-node">Pi Supply</a> that supports the micro:bit connector, which makes it easy to get started.</p>
+<p><img src="https://blog.drogue.io/rust-and-lora/microbit_breakout.png" alt="microbit with connector" /></p>
+<p>To be able to communicate with the RAK811 firmware, I started the <a href="https://github.com/drogue-iot/drogue-rak811/">drogue-rak811</a> driver crate, that aims to provide a good interface for working with the RAK811 AT firmware using the embedded_hal serial traits.</p>
+<p>The firmware on the breakout board <a href="https://github.com/PiSupply/IoTLoRaRange/issues/14">is outdated</a>, so keep in mind that the the AT command set supported by the RAK811 module is slightly outdated compared to the latest firmware. At present the driver only supports the 2.x version of the AT command firmware, so contributions for the 3.x firmware is welcome.</p>
+<p>The complete example for this post can be found <a href="https://github.com/drogue-iot/drogue-rak811/tree/main/examples/microbit-rak811">here</a>.</p>
+<h2 id="configuring-the-device">Configuring the device</h2>
+<p>At first, the UART must be configured and handed to the driver:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> uarte = Uarte::new(
+    ctx.device.</span><span style="color:#d08770;">UARTE0</span><span style="color:#c0c5ce;">,
+    Pins {
+        txd: port0.p0_01.</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(Level::High).</span><span style="color:#96b5b4;">degrade</span><span style="color:#c0c5ce;">(),
+        rxd: port0.p0_13.</span><span style="color:#96b5b4;">into_floating_input</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">degrade</span><span style="color:#c0c5ce;">(),
+        cts: None,
+        rts: None,
+    },
+    Parity::</span><span style="color:#d08770;">EXCLUDED</span><span style="color:#c0c5ce;">,
+    Baudrate::</span><span style="color:#d08770;">BAUD115200</span><span style="color:#c0c5ce;">,
+);
+
+</span><span style="color:#b48ead;">let </span><span style="color:#c0c5ce;">(uarte_tx, uarte_rx) = uarte
+    .</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(ctx.resources.tx_buf, ctx.resources.rx_buf)
+    .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> driver = rak811::Rak811Driver::new(
+    uarte_tx,
+    uarte_rx,
+    port1.p1_02.</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(Level::High).</span><span style="color:#96b5b4;">degrade</span><span style="color:#c0c5ce;">(),
+)
+.</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+log::info!(&quot;</span><span style="color:#a3be8c;">Driver initialized</span><span style="color:#c0c5ce;">&quot;);
+</span></code></pre>
+<p>In order to connect to the gateway, the LoRa node needs to be configured with the following:</p>
+<ul>
+<li>Frequency band - This depends on where you live. In my case, its 868 Mhz.</li>
+<li>Mode of operation - This can either be LoRa P2P which allows the node to send and receive data directly from another LoRa node, or LoRaWAN which connects the node to a gateway.</li>
+</ul>
+<p>The driver can be used to configure the properties in this way:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">driver.</span><span style="color:#96b5b4;">set_band</span><span style="color:#c0c5ce;">(rak811::LoraRegion::</span><span style="color:#d08770;">EU868</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+driver.</span><span style="color:#96b5b4;">set_mode</span><span style="color:#c0c5ce;">(rak811::LoraMode::</span><span style="color:#d08770;">WAN</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>In addition, the following settings from the TTN console must be set:</p>
+<ul>
+<li>Device EUI </li>
+<li>Application EUI</li>
+<li>Application Key</li>
+</ul>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">driver.</span><span style="color:#96b5b4;">set_device_eui</span><span style="color:#c0c5ce;">(&amp;[</span><span style="color:#d08770;">0x00</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xBB</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x7C</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x95</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xAD</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xB5</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x30</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xB9</span><span style="color:#c0c5ce;">]).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+driver.</span><span style="color:#96b5b4;">set_app_eui</span><span style="color:#c0c5ce;">(&amp;[</span><span style="color:#d08770;">0x70</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xB3</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xD5</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x7E</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xD0</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x03</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0xB1</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x84</span><span style="color:#c0c5ce;">])
+</span><span style="color:#65737e;">// Secret generated by TTN
+</span><span style="color:#c0c5ce;">driver .</span><span style="color:#96b5b4;">set_app_key</span><span style="color:#c0c5ce;">(&amp;[</span><span style="color:#d08770;">0x00</span><span style="color:#c0c5ce;">]).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Then, we can join the network and send our first packet!</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">driver.</span><span style="color:#96b5b4;">join</span><span style="color:#c0c5ce;">(rak811::ConnectMode::</span><span style="color:#d08770;">OTAA</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#65737e;">// Port number can be between 1 and 255
+</span><span style="color:#c0c5ce;">driver.</span><span style="color:#96b5b4;">send</span><span style="color:#c0c5ce;">(rak811::QoS::Confirmed, </span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">b</span><span style="color:#c0c5ce;">&quot;</span><span style="color:#a3be8c;">hello!</span><span style="color:#c0c5ce;">&quot;).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>And, we should see data showing in the TTN console:</p>
+<p><img src="https://blog.drogue.io/rust-and-lora/ttn_device_data.png" alt="ttn console" /></p>
+<p>And thats how to get started with LoRa in Rust.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>In this post we have introduced the different concepts within the LoRa architecture. We have then seen how you can use a driver for the RAK811 AT command firmware to enable LoRa capabilities for your device, using Rust. We have also seen how to configure The Things Network to work with a custom LoRa gateway and node.</p>
+<h2 id="future-work">Future work</h2>
+<p>But wait, where is drogue-cloud in all this? And indeed, this is a missing piece of the puzzle right now, and the howto will be described in a future blog post. In short, you create an integration in the TTN console and point it to an HTTP or MQTT endpoint of drogue-cloud. In 2021, we plan on making drogue-cloud integrate with services such as TTN (using their APIs) in a seamless way that allows a unified experience for device management and telemetry/event data flowing to/from TTN and drogue-cloud. In an even more distant future, we could potentially add a LoRa Network Server to drogue-cloud, giving users full control of their IoT backend.</p>
+<p>As mentioned earlier, the firmware supported by the driver is not the latest, and there are some changes in the AT command set in newer versions. The driver should be updated to support both formats, which can be deduced by querying the module for the firmware version.</p>
+<p>Although sending data to a LoRaWAN network is working, I was not able to get the driver to receive data from the network. This should normally happen by the gateway transmitting any pending data to the node whenever the node is sending new data. According to the AT command documentation, the firmware should send additional data as events to the driver, but this is not happening. At present, I have not debugged this enough to know if the problem is with the gateway or the node.</p>
+<p>There are also other LoRa devices and boards out there, and adding support for those would help increase adoption of Rust for LoRa. The abstractions set out by the drogue-rak811 driver can be generalized into traits that allow applications to work with different lora devices.</p>
+<p>The driver currently works in a synchronous operation not using interrupts. Refactoring the driver to work in an interrupt-driven way would pave the way to enable using sleep modes to save power.</p>
+<h1 id="resources">Resources</h1>
+<ul>
+<li><a href="https://www.thethingsnetwork.org/">The Things Network</a></li>
+<li><a href="https://www.rakwireless.com/en-us">RAK Wireless</a></li>
+<li><a href="https://lora-alliance.org/">LoRa Alliance</a></li>
+<li><a href="https://crates.io/crates/drogue-rak811">Drogue Rak811 Driver</a></li>
+<li><a href="https://uk.pi-supply.com/products/iot-micro-bit-lora-node">Pi Supply Breakout</a></li>
+<li><a href="https://www.hackster.io/naresh-krish/getting-started-with-the-rak811-lora-node-67f157">Getting Started with Raspberry Pi and RAK811</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/rust-and-lora' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="lora-gateways" href="https://blog.drogue.io/rust-and-lora/#lora-gateways">LoRa Gateways</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="lora-network" href="https://blog.drogue.io/rust-and-lora/#lora-network">LoRa Network</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="lora-node" href="https://blog.drogue.io/rust-and-lora/#lora-node">LoRa Node</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="configuring-the-device" href="https://blog.drogue.io/rust-and-lora/#configuring-the-device">Configuring the device</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="conclusion" href="https://blog.drogue.io/rust-and-lora/#conclusion">Conclusion</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="future-work" href="https://blog.drogue.io/rust-and-lora/#future-work">Future work</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="resources" href="https://blog.drogue.io/rust-and-lora/#resources">Resources</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

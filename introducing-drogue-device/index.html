@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Introducing Drogue Device &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Drogue Device is a new async-based actor framework for embedded rust">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Introducing Drogue Device" />
+<meta name="twitter:description" content="Drogue Device is a new async-based actor framework for embedded rust">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Introducing Drogue Device">
+<meta property="og:url" content="https://blog.drogue.io/introducing-drogue-device">
+<meta property="og:description" content="Drogue Device is a new async-based actor framework for embedded rust">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Introducing Drogue Device</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>21 minute read</span>
+        <meta itemprop="wordCount" content="4089">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-02-02'> 2 February 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter and Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;introducing-drogue-device&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Trying to bring reusable and efficient components to embedded Rust has been a challenge for our team.
+We think we've started to make headway, and want to introduce the <code>Drogue Device</code> project.</p>
+<span id="continue-reading"></span><h1 id="background">Background</h1>
+<p>A lot of embedded frameworks and RTOSs rely on procedural coding, &quot;copy these source files into your tree&quot; or a lot of manual connection of APIs to the runtime.
+Since <em>We Are Red Hat</em> (or IBM, or more specifically/historically &quot;JBoss&quot;), we like reusable components. And frameworks.
+They represent guardrails and provide guidance on how to build larger <em>systems</em>, we feel.</p>
+<h2 id="component-systems">Component Systems</h2>
+<p>In enterprise software, component systems abound. 
+There's Enterprise Java Beans, Actix, CDI, Vert.x, Node.js, Akka framework, Quarkus, Spring, etc.
+Many of these component systems tend to rely on multi-threading capability of the underlying system, and bring about concurrency issues, such as shared-state and locking.</p>
+<h2 id="actor-systems">Actor Systems</h2>
+<p>Of these systems, Akka is an <em>actor system</em>, which attempts to draw clear lines about ownership and control of state and data, helping alleviate concurrency concerns.
+An actor within an actor system believes that it is single-threaded, serially processing requests that arrive which desire to operate upon the data it controls.
+This seemingly single-threaded nature allows an actor to avoid locking of its data. 
+All mutations occur from the POV of the actor himself, triggered by <em>message passing</em> from external sources which make requests.</p>
+<h2 id="messaging">Messaging</h2>
+<p>Common messaging patterns include <em>fire-and-forget</em> notifications from one component to another, and <em>request/response</em> between two components.
+Sometimes components want to ambiguously broadcast messages to whichever unknown components might be interested. 
+This third type is basically an <em>event bus</em>.</p>
+<h2 id="task-scheduling">Task Scheduling</h2>
+<p>An actor that thinks it is single-threaded is great, but our MCUs usually also only have one core, and thus one thread.
+A slow actor, or one that blocks the thread of execution can bring the entire system to a halt.
+Just because one actor hits a wall and can make no further progress, another actor might be able to do some meaningful work, unblocking the first.</p>
+<h3 id="preemptive-task-scheduling">Preemptive Task Scheduling</h3>
+<p>If you have a preemptive thread or task scheduler, then a kernel is slicing up processor time. 
+An task is given a certain number of cycles (or milliseconds, or reductions or whatever unit measurement used to slice the time pie), and when the 
+timer expires, the kernel forcibly pause the task and select another one to run for a slice of time.
+Naive implementations will allow a blocked task to continue to block until his time-slice expires.
+Other implementations allow a task to indicate that it is blocked, and relinquish any remaining time, cooperatively.</p>
+<h3 id="run-to-completion-task-scheduling">Run-to-Completion Task Scheduling</h3>
+<p>Some schedulers select a task, and allow it to run to completion, even if it's slow, or blocks briefly. 
+The onus is on the developer to ensure his tasks will not completely halt or take too much time. 
+Run-to-completion semantics can be great when you have a task you <em>absolutely</em> need to have, well, run to completion before being put into the queue to run again later.</p>
+<h3 id="cooperative-task-scheduling">Cooperative Task Scheduling</h3>
+<p>A cooperative task scheduler allows a task to <em>run until it can't or doesn't want to run any more</em>.
+In this way, the tasks <em>must</em> cooperate. 
+A task may have an infinite loop that never completes, and if he doesn't <em>pass</em> or <em>yield</em> control back, will consume 100% of the processor, 100% of the time.
+This is a sub-optimal situation.
+Cooperative task scheduling can be improved by language support for <em>asynchronous</em> architectures, where the language can implicitly be aware when a task can no longer make progress.
+This results in the task being immediately pulled off the active queue, and another <em>ready and waiting</em> task to be selected to do some work.
+This doesn't solve the tight-loop problem, where a task must still cooperatively <em>pass</em> control back to the kernel.</p>
+<h1 id="drogue-device-architecture"><code>Drogue Device</code> Architecture</h1>
+<p>Given the above background, along with implementing an untold number of proofs-of-concept, we've selected the following key points for our system:</p>
+<ul>
+<li>Actor-based: State is held by an actor, accessed/mutated only by that actor, in response to messages.</li>
+<li>Cooperative Scheduling: Using Rust's <code>async/await</code> support, actors attempt to be non-blocking and share the processor.</li>
+<li>Message-Passing: Support <em>notifications</em>, <em>requests/responses</em>, and an <em>event-bus</em>.</li>
+</ul>
+<h2 id="the-actors">The Actors</h2>
+<p>First, being an actor system, the primary point-of-interest is the <em>actor</em>. 
+Drogue Device supports <em>two</em> flavors of actor: Plain Ol' Actors and Interrupt Actors.</p>
+<h3 id="plain-ol-actors">Plain Ol' Actors</h3>
+<p>The general case of an actor is a component that contains state, and can manipulate it in response to messages.
+Their <em>only</em> interface with the outside world is messages. 
+To ensure that no other code can directly twiddle an actor, the primary handle on an actor is an <code>Address&lt;A&gt;</code> instance.
+It is through the <code>Address&lt;A&gt;</code> of an actor <code>A</code> that any part of the system can communicate with the actor.
+All methods upon <code>Address&lt;A&gt;</code> are immutable, and the addresses can be freely <code>clone()</code>'d and shared around.</p>
+<p>As noted above, there are two types of message interactions possible with an actor through it's <code>Address&lt;A&gt;</code>:</p>
+<h4 id="notify">Notify</h4>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">notify</span><span style="color:#c0c5ce;">&lt;M&gt;(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M)
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    A: NotifyHandler&lt;M&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    M: </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+{
+    ... elided ...
+}
+</span></code></pre>
+<p>This signature demonstrates a few points:</p>
+<ul>
+<li>The system is ultimately <code>'static</code>-centric.</li>
+<li>You can send a message <code>M</code> if the underlying <code>Actor</code> implements the <code>NotifyHandler&lt;M&gt;</code> trait.</li>
+</ul>
+<p>A <code>notify(...)</code> is a non-blocking synchronous call, meaning that it won't stop the processing and it can be called from any context, sync or async.
+It ultimately enqueues the message into a FIFO for the actor. 
+Some systems refer to this FIFO as the actor's &quot;inbox&quot;.
+Messages in the FIFO are indeed processed in a first-in-first-out order.
+This also means that the message is <em>not</em> processed immediately upon the call of <code>notify(...)</code>.
+This gives this method <em>fire and forget</em> semantics.
+The actor will be mostly (see <strong>NB</strong> below)  guaranteed to eventually process the notification, at some point in the future.</p>
+<p><em><strong>NB:</strong> Currently the FIFO is set to a depth of 16, and if it overflows messages will be silently discarded.
+We understand this is sub-optimal. 
+The intention is that once <em>const generics</em> are available in stable Rust we will allow per-actor queue depth configuration.
+Additionally, we are considering how different overflow strategies may be applied per-actor.</em></p>
+<p>On the <code>Actor</code> side, processing is handled through an implementation of the <code>NotifyHandler&lt;M&gt;</code> trait, for each type of message that is considered acceptable:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">On;
+</span><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">Off;
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;P,A&gt; NotifyHandler&lt;On&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">SimpleLED&lt;P,A&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    P: OutputPin,
+    A: ActiveOutput,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: On) -&gt; Completion {
+        ... elided ...
+    }
+}
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;P,A&gt; NotifyHandler&lt;Off&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">SimpleLED&lt;P,A&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    P: OutputPin,
+    A: ActiveOutput,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: Off) -&gt; Completion {
+        ... elided ...
+    }
+}
+</span></code></pre><h4 id="request">Request</h4>
+<p>Sometimes it's useful to have a somewhat synchronous interactino with an actor in an <em>request/response</em> type of cycle.
+The <code>Address&lt;A&gt;</code> type also provides that capability:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;"> async </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">request</span><span style="color:#c0c5ce;">&lt;M&gt;(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; &lt;A as RequestHandler&lt;M&gt;&gt;::Response
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    A: RequestHandler&lt;M&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    M: </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+{
+    ... elided ...
+}
+</span></code></pre>
+<p>The first thing to note is that because <code>Address&lt;A&gt;</code> is a <em>type</em> and not a <em>trait</em>, it can indeed support <code>async</code> methods.
+The second thing to note is that <code>request(...)</code> <strong>is</strong> an <code>async</code> method.
+Upon calling this method, a <code>Future</code> is ultimately returned, and the called <em>must</em> <code>.await</code> the response, per usual Rust async semantics.</p>
+<p>It is the async nature of this method that allows actors to talk to other actors and remain non-blocking and cooperatively schedulable.</p>
+<p>As with the <code>notify(...)</code> method, this method is also considered immutable, and uses the underlying actor's FIFO.
+The same FIFO is shared between all types of messages that an actor can be notified or requested.</p>
+<p>On the <code>Actor</code> side, as with the <code>NotifyHandler&lt;M&gt;</code>, there is a <code>RequestHandler&lt;M&gt;</code> trait to be implemented for each type of request an actor needs to be able to handle.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">Lock;
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;T&gt; RequestHandler&lt;Lock&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Mutex&lt;T&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    T: </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+{
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Response = Exclusive&lt;T&gt;;
+
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_request</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: Lock) -&gt; Response&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Response&gt; {
+        ... elided ...
+    }
+}
+</span></code></pre><h3 id="interrupt-actors">Interrupt Actors</h3>
+<p>Extending on the Plain Ol' Actors are Interrupt actors, which in addition to doing all the things an actor can do, <em>also</em> is cognizant and connected to hardware interrupts.
+Interrupts are special, because they can arrive at any time, and they are not initiated as a message from another actor.
+So interrupts are treated somewhat specially.</p>
+<p>An interrupt firing can be considered a special type of message, without content. 
+To that end, the <code>Interrupt</code> trait brings one more method to implement: <code>on_interrupt(...)</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;D, PIN&gt; Interrupt </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Button&lt;D, PIN&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    D: Device + EventHandler&lt;ButtonEvent&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    PIN: InputPin + ExtiPin,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_interrupt</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) {
+        ... elided ...
+    }
+}
+</span></code></pre><h2 id="message-handling-and-async">Message-handling and <code>async</code></h2>
+<p>Since Drogue Device attempts to provide guardrails for performing asynchronous operations where possible, but Rust doesn't currently support <code>async</code> in traits,
+you may have noticed that all of the aforementioned <code>NotifyHandler&lt;M&gt;</code> and <code>RequestHandler&lt;M&gt;</code> methods were not, at all, <code>async</code>.
+Additionally, their return value in the signatures may have appeared slightly odd.
+Also, each method takes a <code>&amp;'static mut self</code> reference. 
+It's <code>`static</code> because the system is static, and Futures work best with <code>`static`</code>. 
+It's <code>&amp;mut</code> because the scheduler guarantees that the actor's methods are serialized and ensures that a given handler is the only reference (mutable or not) 
+for the actor at any given point in time.
+This allows the actor to free, without locks, mutate his own state.</p>
+<h3 id="on-notify"><code>on_notify</code></h3>
+<p>Let's look at the <em>fire-and-forget</em> <code>NotifyHandler&lt;M&gt;</code> on an actor.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; Completion;
+</span></code></pre>
+<p>Even though <code>Address&lt;A&gt;::notify(...)</code> returns nothing, the handler implemented on the actor must return a <code>Completion</code>, which is where the opportunity to perform asynchronous
+processing arrives.</p>
+<p>If the processing is quick and non-blocking, a simple implementation can do whatever work it needs to do and return <code>Completion::Immediate</code> to signal 
+that the message was immediately processed to completion. </p>
+<p>An <code>::immediate()</code> function is provided to create a <code>Completion::Immediate</code> for the return value.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; Completion {
+    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.counter += </span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">;
+    Completion::immediate()
+}
+</span></code></pre>
+<p>If in response to a message an actor needs to perform some other action, such as making an <code>async</code> request to <em>another</em> actor, a <code>Completion::Defer(...)</code> is available,
+which ultimately wraps an <code>async</code> block.<br />
+The executor will attempt to avoid a context-switch and begin executing the returned async block as far as possible before swapping to another task.</p>
+<p>A <code>::defer(...)</code> function is provided to create a <code>Completion::Defer(...)</code> for the return value.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; Completion {
+    Completion::defer( async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.counter += </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.other_actor.</span><span style="color:#96b5b4;">request</span><span style="color:#c0c5ce;">( SomeMessage ).await;
+    })
+}
+</span></code></pre><h3 id="on-request"><code>on_request</code></h3>
+<p>As with <code>on_notify</code>, the <code>on_request(...)</code> method <em>also</em> takes the same flavor of <code>&amp;'static mut self</code> and provides both an immediate and defer variant of <code>Response&lt;T&gt;</code>, but allow for the
+return-value as specified in the associated type of <code>RequestHandler</code>.</p>
+<p>An immediate response is allowed if <code>async</code> is not required:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_request</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; Response&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Response&gt; {
+    Response::immediate(</span><span style="color:#d08770;">42</span><span style="color:#c0c5ce;">)
+}
+</span></code></pre>
+<p>If an async block is needed:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_request</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: M) -&gt; Response&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Response&gt; {
+    Response::defer( async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> response = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.some_other_actor.</span><span style="color:#96b5b4;">rqeuest</span><span style="color:#c0c5ce;">( AnotherMessage ).await;
+        response.favorite_cheese
+    } )
+}
+</span></code></pre><h3 id="on-interrupt"><code>on_interrupt</code></h3>
+<p>For actors that also implement <code>Interrupt</code>, their <code>on_interrupt(...)</code> method may be called when the associated interrupt fires.
+Since interrupts must return quickly, this is a simple, normal, non-async method without opportunity of deferring to an <code>async</code> block:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_interrupt</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) {
+    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.some_other_actor.</span><span style="color:#96b5b4;">notify</span><span style="color:#c0c5ce;">( SomethingHappened );
+}
+</span></code></pre>
+<p>This also implies that <code>Interrupt</code> implementations can only use <code>notify(...)</code> on other actors, and not make asynchronous <code>request(...)</code>
+calls.</p>
+<h3 id="general-async-executor">General <code>async</code> Executor</h3>
+<p><strong>There isn't one.</strong></p>
+<p>Drogue Device explicitly does not support arbitrary <code>spawn(...)</code>ing of <code>async</code> blocks.
+All asynchronous activity takes place through coordination of actors and their FIFO queues.</p>
+<p><em>There is an async executor, you're just not allowed to touch it directly.</em></p>
+<h1 id="wiring-it-all-together">Wiring it all together</h1>
+<p>So far we've explored the various actor, address, message-handlers and async aspects, so let's now examine how we connect it all together.</p>
+<h2 id="the-device">The <code>Device</code></h2>
+<p>At the root of an actor system is a <code>Device</code>. 
+This is a user-constructed type that ultimately ends up holding all of the other <code>Actor</code> and <code>Interrupt</code>s, but indirectly.
+When the system is started, the entire tree, from the <code>Device</code> on down is moved into a <code>'static</code> context, which is how
+all of the message-handlers end up taking a <code>&amp;'static mut self</code>. </p>
+<p>This example will use an STM32 B-L4S5I-IOT01A board, but the same principals apply to others, even if the pinout is different.</p>
+<h3 id="the-type">The Type</h3>
+<p>For ease, a simple type with public members can be defines. 
+Since nothing should actually hold an <code>Actor</code> directly, each Actor or Interrupt is ultimately held in a matching <em>context</em>.
+Type aliases have been used to simplify the signatures since generics are quite prevalent.</p>
+<p>An actor has been specified for each of the two LEDs on this board, along with an interrupt actor for the button.
+Additionally, two <code>Blinker</code> actors and a timer actor are also specified.
+Since hardware timers are interrupt-driven, it is an interrupt actor.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">MyDevice {
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">ld1</span><span style="color:#c0c5ce;">: ActorContext&lt;Ld1Actor&gt;,
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">ld2</span><span style="color:#c0c5ce;">: ActorContext&lt;Ld2Actor&gt;,
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">blinker1</span><span style="color:#c0c5ce;">: ActorContext&lt;Blinker1Actor&gt;,
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">blinker2</span><span style="color:#c0c5ce;">: ActorContext&lt;Blinker2Actor&gt;,
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">button</span><span style="color:#c0c5ce;">: InterruptContext&lt;ButtonInterrupt&gt;,
+    </span><span style="color:#b48ead;">pub </span><span style="color:#bf616a;">timer</span><span style="color:#c0c5ce;">: InterruptContext&lt;TimerActor&gt;,
+}
+</span></code></pre><h3 id="the-device-implementation">The <code>Device</code> Implementation</h3>
+<p>A single method is required when implementing <code>Device</code>: <code>mount(...)</code>.</p>
+<p>When the system is started, the device will be automatically mounted into it. 
+Since the device holds the other actors and interrupts, it <em>must</em> propagate the mount down to the children in order to activate them within the system also.
+Upon mounting each child, its <code>Address&lt;A&gt;</code> will be returned.</p>
+<p>Each Actor can optionally implement a <code>Bind&lt;OTHER_ACTOR:Actor&gt;</code> method to have a way to inject another actor's <code>Address&lt;A&gt;</code> into it.
+This is one way inform an actor of another actor during the <code>mount(...)</code> cycle.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl </span><span style="color:#c0c5ce;">Device </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">MyDevice {
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">mount</span><span style="color:#c0c5ce;">(
+        &amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">,
+        </span><span style="color:#bf616a;">bus_address</span><span style="color:#c0c5ce;">: &amp;Address&lt;EventBus&lt;</span><span style="color:#b48ead;">Self</span><span style="color:#c0c5ce;">&gt;&gt;,
+        </span><span style="color:#bf616a;">supervisor</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> Supervisor,
+    ) {
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld1_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.ld1.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld2_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.ld2.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> blinker1_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.blinker1.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> blinker2_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.blinker2.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> timer_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.timer.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+
+        blinker1_addr.</span><span style="color:#96b5b4;">bind</span><span style="color:#c0c5ce;">(&amp;timer_addr);
+        blinker1_addr.</span><span style="color:#96b5b4;">bind</span><span style="color:#c0c5ce;">(&amp;ld1_addr);
+
+        blinker2_addr.</span><span style="color:#96b5b4;">bind</span><span style="color:#c0c5ce;">(&amp;timer_addr);
+        blinker2_addr.</span><span style="color:#96b5b4;">bind</span><span style="color:#c0c5ce;">(&amp;ld2_addr);
+
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> button_addr = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.button.</span><span style="color:#96b5b4;">mount</span><span style="color:#c0c5ce;">(supervisor);
+        button_addr.</span><span style="color:#96b5b4;">bind</span><span style="color:#c0c5ce;">(bus_address);
+    }
+}
+</span></code></pre>
+<p>In the code above, each <code>Blinker</code> actor gets <code>bind(...)</code> called twice: once for the LED it needs to blink, and once for the shared <code>Timer</code>.</p>
+<p>The <code>Button</code> actor gets bound to the address of the <code>EventBus</code> which we will touch on later.</p>
+<h3 id="the-setup">The Setup</h3>
+<p>Using bare-metal Rust, we set up the actors and the device in a normal <code>#[entry]</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">entry</span><span style="color:#c0c5ce;">]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">main</span><span style="color:#c0c5ce;">() -&gt; ! {
+    rtt_init_print!();
+    log::set_logger(&amp;</span><span style="color:#d08770;">LOGGER</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+    log::set_max_level(log::LevelFilter::Debug);
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> device = Peripherals::take().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+    log::info!(&quot;</span><span style="color:#a3be8c;">[main] Initializing</span><span style="color:#c0c5ce;">&quot;);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> flash = device.</span><span style="color:#d08770;">FLASH</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">();
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> rcc = device.</span><span style="color:#d08770;">RCC</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">();
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> pwr = device.</span><span style="color:#d08770;">PWR</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb1r1);
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> clocks = rcc
+        .cfgr
+        .</span><span style="color:#96b5b4;">sysclk</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">pclk1</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">pclk2</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">freeze</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> flash.acr, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> pwr);
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpioa = device.</span><span style="color:#d08770;">GPIOA</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpiob = device.</span><span style="color:#d08770;">GPIOB</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpioc = device.</span><span style="color:#d08770;">GPIOC</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpiod = device.</span><span style="color:#d08770;">GPIOD</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+
+    </span><span style="color:#65737e;">// == LEDs ==
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld1 = gpioa
+        .pa5
+        .</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioa.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioa.otyper);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld1 = SimpleLED::new(ld1, Active::High);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld2 = gpiob
+        .pb14
+        .</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpiob.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpiob.otyper);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ld2 = SimpleLED::new(ld2, Active::High);
+
+    </span><span style="color:#65737e;">// == Blinker ==
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> blinker1 = Blinker::new(Milliseconds(</span><span style="color:#d08770;">500</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> blinker2 = Blinker::new(Milliseconds(</span><span style="color:#d08770;">1000</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+
+    </span><span style="color:#65737e;">// == Button ==
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> button = gpioc
+        .pc13
+        .</span><span style="color:#96b5b4;">into_pull_up_input</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.pupdr);
+
+    button.</span><span style="color:#96b5b4;">make_interrupt_source</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> device.</span><span style="color:#d08770;">SYSCFG</span><span style="color:#c0c5ce;">, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb2);
+    button.</span><span style="color:#96b5b4;">enable_interrupt</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> device.</span><span style="color:#d08770;">EXTI</span><span style="color:#c0c5ce;">);
+    button.</span><span style="color:#96b5b4;">trigger_on_edge</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> device.</span><span style="color:#d08770;">EXTI</span><span style="color:#c0c5ce;">, Edge::</span><span style="color:#d08770;">RISING_FALLING</span><span style="color:#c0c5ce;">);
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> button = Button::new(button, Active::Low);
+
+    </span><span style="color:#65737e;">// == Timer ==
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> mcu_timer = McuTimer::tim15(device.</span><span style="color:#d08770;">TIM15</span><span style="color:#c0c5ce;">, clocks, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb2);
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> timer = Timer::new(mcu_timer);
+
+    </span><span style="color:#65737e;">// == Device ==
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> device = MyDevice {
+        ld1: ActorContext::new(ld1).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">ld1</span><span style="color:#c0c5ce;">&quot;),
+        ld2: ActorContext::new(ld2).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">ld2</span><span style="color:#c0c5ce;">&quot;),
+        blinker1: ActorContext::new(blinker1).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">blinker1</span><span style="color:#c0c5ce;">&quot;),
+        blinker2: ActorContext::new(blinker2).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">blinker2</span><span style="color:#c0c5ce;">&quot;),
+        button: InterruptContext::new(button, </span><span style="color:#d08770;">EXTI15_10</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">button</span><span style="color:#c0c5ce;">&quot;),
+        timer: InterruptContext::new(timer, </span><span style="color:#d08770;">TIM15</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">with_name</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">timer</span><span style="color:#c0c5ce;">&quot;),
+    };
+
+    device!( MyDevice = device; </span><span style="color:#d08770;">1024 </span><span style="color:#c0c5ce;">);
+}
+</span></code></pre>
+<p>Each actor is directly constructed and configured within the <code>#[entry]</code>, wrapped in the appropriate context and attached to the <code>device</code>.
+You will notice that <code>InterruptContext::new(...)</code> also takes an IRQ to be connected to the underlying actor.
+When the associate interrupt fires, the actor's <code>on_interrupt(...)</code> will be triggered.</p>
+<p>Optionally, each context can be associated with a name, which can make debugging or logging easier in a multi-actor system, particular
+when working with several actors of the same type.</p>
+<h2 id="the-device-magic">The <code>device!(...)</code> magic</h2>
+<p>The last line of the <code>#[entry]</code> specifies the type implementing <code>Device</code>, the device itself, plus the size of memory to reserve for
+asynchronous book-keeping. In this case, 1024 bytes is allotted.</p>
+<p>The <code>device!(...)</code> macro never returns and is a suitable last line for <code>#[entry]</code>.</p>
+<p>At this point, the system is running.</p>
+<h1 id="explore-the-example">Explore the Example</h1>
+<p>All of the example actors in our system are part of the <code>drogue-device</code> crate.</p>
+<h2 id="leds">LEDs</h2>
+<p>Each LED is a <code>SimpleLED</code> actor, which is parameterized by the appropriate digital <code>OutputPin</code> and an <code>Active</code> state which describes if it's active-high or active-low.
+Each LED can handle a notification of simple <code>On</code> or <code>Off</code> messages:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;P,A&gt; NotifyHandler&lt;On&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">SimpleLED&lt;P,A&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    P: OutputPin,
+    A: ActiveOutput,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: On) -&gt; Completion {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">turn_on</span><span style="color:#c0c5ce;">();
+        Completion::immediate()
+    }
+}
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;P,A&gt; NotifyHandler&lt;Off&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">SimpleLED&lt;P,A&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    P: OutputPin,
+    A: ActiveOutput,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: Off) -&gt; Completion {
+        Completion::defer(async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+            </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">turn_off</span><span style="color:#c0c5ce;">();
+        })
+    }
+}
+</span></code></pre><h3 id="magic-with-address-simpleled">Magic with <code>Address&lt;SimpleLED&lt;...&gt;&gt;</code></h3>
+<p>Since the <code>SimpleLED</code> is implemented within the <code>drogue-device</code> crate, along with <code>Address</code>, we can actually extend <code>Address&lt;SimpleLED&lt;...&gt;&gt;</code> to provide handy API methods.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;S&gt; Address&lt;S&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    S: NotifyHandler&lt;Off&gt; + NotifyHandler&lt;On&gt;,
+    S: Actor + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+{
+    </span><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">turn_on</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">notify</span><span style="color:#c0c5ce;">(On);
+    }
+
+    </span><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">turn_off</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">notify</span><span style="color:#c0c5ce;">(Off);
+    }
+}
+</span></code></pre>
+<p>Now, anyone holding an <code>Address&lt;SimpleLED&lt;...&gt;&gt;</code> does not even have to think in terms of <code>notify(On)</code> or <code>notify(Off)</code>, but can directly call <code>turn_on()</code> and <code>turn_off()</code>.</p>
+<h2 id="timer">Timer</h2>
+<p>The <code>Timer</code> actor was constructed using a hardware timer of our platform, and wired to the appropriate interrupt.
+The timer is a shared resource, capable of providing asynchronous delays or scheduling future delivery of messages.</p>
+<p>Since an asychronous delay is asynchronous and must be awaited, it is implemented as a <code>RequestHandler&lt;Delay&lt;...&gt;&gt;</code>.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;T: HalTimer, DUR: Duration + Into&lt;Milliseconds&gt;&gt; RequestHandler&lt;Delay&lt;DUR&gt;&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Timer&lt;T&gt; {
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Response = ();
+
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_request</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: Delay&lt;DUR&gt;) -&gt; Response&lt;</span><span style="color:#b48ead;">Self::</span><span style="color:#c0c5ce;">Response&gt; {
+        ... elided ...
+    }
+}
+</span></code></pre>
+<p>The request has no meaningful response type, but the <code>.await</code> from the caller will only return once the delay has expired.</p>
+<p>We'll be using the <code>Schedule</code> message type, which simply asks the timer to deliver, via <code>notify(...)</code> some message to some address at some point in the future.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;T, E, A, DUR&gt; NotifyHandler&lt;Schedule&lt;A, DUR, E&gt;&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Timer&lt;T&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    T: HalTimer,
+    E: Clone + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    A: Actor + NotifyHandler&lt;E&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    DUR: Duration + Into&lt;Milliseconds&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: Schedule&lt;A, DUR, E&gt;) -&gt; Completion {
+        ... elided ...
+    }
+} 
+</span></code></pre><h2 id="blinker">Blinker</h2>
+<p>If you recall, our <code>Blinker</code> was bound to both the LED and the timer.
+Since its own address, along with that of the LED and Timer are not known at construction time, it has <code>Option&lt;Address&lt;...&gt;&gt;</code> fields for populating later, during start-up or via <code>bind(...)</code> calls.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">Blinker&lt;S, T&gt;
+where
+    S: Switchable,
+    T: HalTimer,
+{
+    </span><span style="color:#bf616a;">led</span><span style="color:#c0c5ce;">: Option&lt;Address&lt;S&gt;&gt;,
+    </span><span style="color:#bf616a;">timer</span><span style="color:#c0c5ce;">: Option&lt;Address&lt;Timer&lt;T&gt;&gt;&gt;,
+    </span><span style="color:#bf616a;">address</span><span style="color:#c0c5ce;">: Option&lt;Address&lt;</span><span style="color:#b48ead;">Self</span><span style="color:#c0c5ce;">&gt;&gt;,
+    </span><span style="color:#bf616a;">delay</span><span style="color:#c0c5ce;">: Milliseconds,
+}
+</span></code></pre>
+<p>The <code>Blinker</code> implements some methods on the <code>Actor</code> trait which allow it to learn of its own <code>Address</code> and to perform some action at start-up.
+In this case, it schedules a message of <code>State::On</code> back to itself after <code>delay</code> milliseconds when it starts.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;S, T&gt; Actor </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Blinker&lt;S, T&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    S: Switchable,
+    T: HalTimer,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">mount</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">address</span><span style="color:#c0c5ce;">: Address&lt;</span><span style="color:#b48ead;">Self</span><span style="color:#c0c5ce;">&gt;)
+    </span><span style="color:#b48ead;">where
+        Self</span><span style="color:#c0c5ce;">: Sized,
+    {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.address.</span><span style="color:#96b5b4;">replace</span><span style="color:#c0c5ce;">(address);
+    }
+
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">start</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) -&gt; Completion {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.timer.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">schedule</span><span style="color:#c0c5ce;">(
+            </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.delay,
+            State::On,
+            </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.address.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">clone</span><span style="color:#c0c5ce;">(),
+        );
+        Completion::immediate()
+    }
+}
+</span></code></pre>
+<p>When the timer delivers that future-scheduled message, it will take action on it, and scheduler another message to itself to get a blinking LED, toggling forever.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;S, T&gt; NotifyHandler&lt;State&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Blinker&lt;S, T&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    S: Switchable,
+    T: HalTimer,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: State) -&gt; Completion {
+        </span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> message {
+            State::On =&gt; {
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.led.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">turn_on</span><span style="color:#c0c5ce;">();
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.timer.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">schedule</span><span style="color:#c0c5ce;">(
+                    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.delay,
+                    State::Off,
+                    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.address.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">clone</span><span style="color:#c0c5ce;">(),
+                );
+            }
+            State::Off =&gt; {
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.led.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">turn_off</span><span style="color:#c0c5ce;">();
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.timer.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">schedule</span><span style="color:#c0c5ce;">(
+                    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.delay,
+                    State::On,
+                    </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.address.</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">clone</span><span style="color:#c0c5ce;">(),
+                );
+            }
+        }
+        Completion::immediate()
+    }
+}
+</span></code></pre>
+<p>We also can envision wanting to change the speed of the blinking during the course of the system running, so we provide a <code>NotifyHandler&lt;AdjustDelay&gt;</code> to the <code>Blinker</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">AdjustDelay(Milliseconds);
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;S, T&gt; NotifyHandler&lt;AdjustDelay&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Blinker&lt;S, T&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    S: Switchable,
+    T: HalTimer,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_notify</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: AdjustDelay) -&gt; Completion {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.delay = message.</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">;
+        Completion::immediate()
+    }
+}
+</span></code></pre>
+<p>Once again, also, we add some fluent API to instances of <code>Address&lt;Blinker&lt;...&gt;</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;S, T&gt; Address&lt;Blinker&lt;S, T&gt;&gt;
+</span><span style="color:#b48ead;">where
+    Self</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    S: Switchable,
+    T: HalTimer,
+{
+    </span><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">adjust_delay</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">delay</span><span style="color:#c0c5ce;">: Milliseconds) {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">notify</span><span style="color:#c0c5ce;">(AdjustDelay(delay))
+    }
+}
+</span></code></pre><h2 id="button-and-the-eventbus">Button (and the EventBus)</h2>
+<p>The <code>Button</code> is an interrupt-based actor. While we could have used <code>bind(...)</code> to target a specific recipient of its <code>ButtonEvent::Pressed</code> or <code>ButtonEvent::Released</code> messages, 
+that would have tightly-bound the target to the semantics of the button.</p>
+<p>Instead, the <code>Button</code> is bound to the <code>Address&lt;EventBus&lt;...&gt;&gt;</code> during the <code>Device</code> mount, in order to delegate what action to take to a loosely-coupled actor.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub struct </span><span style="color:#c0c5ce;">Button&lt;D: Device, PIN&gt; {
+    </span><span style="color:#bf616a;">pin</span><span style="color:#c0c5ce;">: PIN,
+    </span><span style="color:#bf616a;">active</span><span style="color:#c0c5ce;">: Active,
+    </span><span style="color:#bf616a;">bus</span><span style="color:#c0c5ce;">: Option&lt;Address&lt;EventBus&lt;D&gt;&gt;&gt;,
+}
+
+</span><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;D, PIN&gt; Bind&lt;EventBus&lt;D&gt;&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Button&lt;D, PIN&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    D: Device,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_bind</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">address</span><span style="color:#c0c5ce;">: Address&lt;EventBus&lt;D&gt;&gt;) {
+        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.bus.</span><span style="color:#96b5b4;">replace</span><span style="color:#c0c5ce;">(address);
+    }
+}
+
+</span></code></pre>
+<p>When the interrupt fires, its <code>on_interrupt(...)</code> method is invoked, where it calls <code>notify(...)</code> on the <code>EventBus&lt;...&gt;</code> address.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl</span><span style="color:#c0c5ce;">&lt;D, PIN&gt; Interrupt </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">Button&lt;D, PIN&gt;
+</span><span style="color:#b48ead;">where
+</span><span style="color:#c0c5ce;">    D: Device + EventHandler&lt;ButtonEvent&gt; + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    PIN: InputPin + ExtiPin,
+{
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_interrupt</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">) {
+        </span><span style="color:#b48ead;">if </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.pin.</span><span style="color:#96b5b4;">check_interrupt</span><span style="color:#c0c5ce;">() {
+            </span><span style="color:#b48ead;">match </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.active {
+                Active::High =&gt; {
+                    </span><span style="color:#b48ead;">if </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.pin.</span><span style="color:#96b5b4;">is_high</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">ok</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">() {
+                        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.bus
+                            .</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">publish</span><span style="color:#c0c5ce;">(ButtonEvent::Pressed);
+                    } </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+                        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.bus
+                            .</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">publish</span><span style="color:#c0c5ce;">(ButtonEvent::Released);
+                    }
+                }
+                Active::Low =&gt; {
+                    </span><span style="color:#b48ead;">if </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.pin.</span><span style="color:#96b5b4;">is_low</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">ok</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">() {
+                        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.bus
+                            .</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">publish</span><span style="color:#c0c5ce;">(ButtonEvent::Pressed);
+                    } </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+                        </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.bus
+                            .</span><span style="color:#96b5b4;">as_ref</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">()
+                            .</span><span style="color:#96b5b4;">publish</span><span style="color:#c0c5ce;">(ButtonEvent::Released);
+                    }
+                }
+            }
+            </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.pin.</span><span style="color:#96b5b4;">clear_interrupt_pending_bit</span><span style="color:#c0c5ce;">();
+        }
+    }
+}
+</span></code></pre><h3 id="what-is-the-eventbus">What is the <code>EventBus</code>?</h3>
+<p>So far we've glossed over the <code>EventBus</code>. 
+The <code>EventBus</code> is <em>your device</em>. 
+Your device provides all logic for what happens to messages sent to the <code>EventBus</code> address, in order to apply application semantics.</p>
+<p>Just as actors and interrupts can implement <code>NotifyHandler&lt;M&gt;</code> and <code>RequestHandler&lt;M&gt;</code>, your <code>Device</code> can (and <em>must</em>) implement <code>EventHandler&lt;M&gt;</code> for all events destined to the <code>EventBus</code>.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">impl </span><span style="color:#c0c5ce;">EventHandler&lt;ButtonEvent&gt; </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">MyDevice {
+    </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">on_event</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">&#39;static mut </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">message</span><span style="color:#c0c5ce;">: ButtonEvent)
+    </span><span style="color:#b48ead;">where
+        Self</span><span style="color:#c0c5ce;">: Sized,
+    {
+        </span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> message {
+            ButtonEvent::Pressed =&gt; {
+                log::info!(&quot;</span><span style="color:#a3be8c;">[{}] button pressed</span><span style="color:#c0c5ce;">&quot;, ActorInfo::name());
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.blinker1.</span><span style="color:#96b5b4;">address</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">adjust_delay</span><span style="color:#c0c5ce;">(Milliseconds(</span><span style="color:#d08770;">100</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+            }
+            ButtonEvent::Released =&gt; {
+                log::info!(&quot;</span><span style="color:#a3be8c;">[{}] button released</span><span style="color:#c0c5ce;">&quot;, ActorInfo::name());
+                </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.blinker1.</span><span style="color:#96b5b4;">address</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">adjust_delay</span><span style="color:#c0c5ce;">(Milliseconds(</span><span style="color:#d08770;">500</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+            }
+        }
+    }
+}
+</span></code></pre>
+<p>Since your <code>Device</code> maintains the contexts for each component, it can obtain the address for each, and send notifications down the line.
+In this case, when the button is pressed, our <code>Device</code> translates that into adjusting the delay for the <code>Blinker</code> that controls LED 1.
+Upon releasing the button, it re-adjusts the delay.</p>
+<p>The end result is pressing the button speeds up the blinking until the button is released.</p>
+<p>And the button is ignorant of the LED, and the LED is ignorant of the button. 
+You device provides the glue between two disparate component message semantics.</p>
+<h1 id="other-bits-in-the-tin">Other Bits in the Tin</h1>
+<p>While LEDs and Buttons are nice, <code>drogue-device</code> also provides within the crate concurrency actors, such as <code>Mutext&lt;T&gt;</code> and <code>Semaphore</code>.
+Additionally, Ulf has recently worked on UART support that does not require <code>'static</code> messages.</p>
+<p>We also aim to include device drivers directly in-tree.</p>
+<h1 id="future-directions">Future directions</h1>
+<p>There's a <em>lot</em> of work left to do, much of which will be bringing significantly more async support to various MCUs and HALs.
+There is probably a lot of API clean-up that can be done, in order to make implementing actors easier.
+We mentioned way way earlier, we intend to make each actor's FIFO more configurable to allow for more tailored overflow behaviour.
+Being able to dynamically adjust the priority of the async tasks is also a goal.</p>
+<p>We welcome any and all contributions to the project. Feel free to drop by our Matrix chat (see sidebar) or use our Discourse server.</p>
+<h1 id="where-to-find-it">Where to find it?</h1>
+<p>Currently we've not published a crate to <code>crates.io</code> because too much is in flux.
+But you can find it on our GitHub:</p>
+<ul>
+<li><a href="https://github.com/drogue-iot/drogue-device"><code>drogue-device</code> on GitHub</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/introducing-drogue-device' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="background" href="https://blog.drogue.io/introducing-drogue-device/#background">Background</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="component-systems" href="https://blog.drogue.io/introducing-drogue-device/#component-systems">Component Systems</a>
+                </li>
+                
+                <li>
+                  <a data-for="actor-systems" href="https://blog.drogue.io/introducing-drogue-device/#actor-systems">Actor Systems</a>
+                </li>
+                
+                <li>
+                  <a data-for="messaging" href="https://blog.drogue.io/introducing-drogue-device/#messaging">Messaging</a>
+                </li>
+                
+                <li>
+                  <a data-for="task-scheduling" href="https://blog.drogue.io/introducing-drogue-device/#task-scheduling">Task Scheduling</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="drogue-device-architecture" href="https://blog.drogue.io/introducing-drogue-device/#drogue-device-architecture">Drogue Device Architecture</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="the-actors" href="https://blog.drogue.io/introducing-drogue-device/#the-actors">The Actors</a>
+                </li>
+                
+                <li>
+                  <a data-for="message-handling-and-async" href="https://blog.drogue.io/introducing-drogue-device/#message-handling-and-async">Message-handling and async</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="wiring-it-all-together" href="https://blog.drogue.io/introducing-drogue-device/#wiring-it-all-together">Wiring it all together</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="the-device" href="https://blog.drogue.io/introducing-drogue-device/#the-device">The Device</a>
+                </li>
+                
+                <li>
+                  <a data-for="the-device-magic" href="https://blog.drogue.io/introducing-drogue-device/#the-device-magic">The device!(...) magic</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="explore-the-example" href="https://blog.drogue.io/introducing-drogue-device/#explore-the-example">Explore the Example</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="leds" href="https://blog.drogue.io/introducing-drogue-device/#leds">LEDs</a>
+                </li>
+                
+                <li>
+                  <a data-for="timer" href="https://blog.drogue.io/introducing-drogue-device/#timer">Timer</a>
+                </li>
+                
+                <li>
+                  <a data-for="blinker" href="https://blog.drogue.io/introducing-drogue-device/#blinker">Blinker</a>
+                </li>
+                
+                <li>
+                  <a data-for="button-and-the-eventbus" href="https://blog.drogue.io/introducing-drogue-device/#button-and-the-eventbus">Button (and the EventBus)</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="other-bits-in-the-tin" href="https://blog.drogue.io/introducing-drogue-device/#other-bits-in-the-tin">Other Bits in the Tin</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="future-directions" href="https://blog.drogue.io/introducing-drogue-device/#future-directions">Future directions</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="where-to-find-it" href="https://blog.drogue.io/introducing-drogue-device/#where-to-find-it">Where to find it?</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>The cloud side of things &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Experimenting with IoT in a serverless world">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="The cloud side of things" />
+<meta name="twitter:description" content="Experimenting with IoT in a serverless world">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="The cloud side of things">
+<meta property="og:url" content="https://blog.drogue.io/the-cloud-side-of-things">
+<meta property="og:description" content="Experimenting with IoT in a serverless world">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">The cloud side of things</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1097">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-11-10'>10 November 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;the-cloud-side-of-things&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Up until now, we have focused on &quot;Rust on embedded devices&quot;, at least when it comes to writing blog posts. Let's
+change that.</p>
+<span id="continue-reading"></span>
+<p>We already had posts about <a href="https://blog.drogue.io/wifi-offload/">WiFi Offloading using the ESP</a>,
+<a href="https://blog.drogue.io/yak-hole-of-tls/">Embedded TLS with Rust</a>, and <a href="https://blog.drogue.io/eswifi/">Integrating the es-WiFi over SPI</a>.
+However, what good is an <a href="https://crates.io/crates/drogue-http-client">embedded HTTP client</a> for, if you have nowhere
+to send your data.</p>
+<h2 id="getting-started">Getting started</h2>
+<p>Pushing a simple sensor value to a database is simple. Today, everyone can do that. There are so many examples out there,
+that show how to use a Raspberry Pi and push some data to a Mosquitto broker. I would argue, that this is nice, and cool,
+but no IoT.</p>
+<p>Many IoT projects start with a simple PoC. A Raspberry Pi, a bit of script code, some backend process. Off you go!</p>
+<p>This is great, because in most cases, people just try to build some kind of application. An application which is built
+<strong>on top of</strong> IoT. This may require you to implement some functionality on the device side, and on the backend side.
+Without really knowing it, you implemented an HTTP server, simply for serving a static web page.</p>
+<h2 id="suddenly-things-get-complicated">Suddenly things get complicated</h2>
+<p>Then, things tend to get much more complex than anticipated. Adding more devices also increases the number of devices
+you need to manage. It also increases the number of messages that hit your backend system. At best, you have a system
+that allows you to scale horizontally. That can buffer data, handle peaks gracefully, and helps you manage a huge number
+of devices.</p>
+<p>Hopefully you won't stop with a single application. The next application however might look slightly different. From
+<a href="https://xkcd.com/927/">XKCD #927</a> we learned, that there is always a new standard around the corner. <em>Things</em>,
+especially <em>industrial things</em>, tend to have a rather long lifespan. So you need to incorporate new protocols, new
+data formats, and new use cases into your system, in order to keep your things running. And, the more devices you
+connect, the more sense it makes to interconnect the data.</p>
+<p>There a more problems to solve, but I don't want to scare you 😉</p>
+<h3 id="what-we-need">What we need</h3>
+<p>We need something that allows the developer to focus on the actual use case, and not worry about IoT concerns.</p>
+<p>This is important to remember in what comes next. Because our focus is not on the simplicity of solving a single
+IoT use case, but to provide a scalable, modular, and interoperable platform that allows you to implement all
+different kinds of IoT use cases.</p>
+<h3 id="knative-cloud-events">Knative &amp; Cloud events</h3>
+<p><a href="https://knative.dev/">Knative</a> is a serverless framework for Kubernetes. And please, let's ignore the term
+&quot;serverless&quot; for the moment.</p>
+<p>Knative helps you build scalable microservices. If you are using Rust to implement them, a microservice starts up
+in milliseconds and consumes only a few megabytes of RAM. Knative also offers APIs around the use case of <em>events</em>
+(aka <em>messages</em>). Instead of using a messaging protocol like AMQP or MQTT, Knative builds on top of
+<a href="https://cloudevents.io/">Cloud Events</a>.</p>
+<p>In a nutshell, Cloud Events describes transport layers and data formats in order to transport events. For example,
+for HTTP, that consists of a few HTTP headers, and the HTTP body being the actual payload. But cloud events can also be
+represented in different other technologies like HTTP, JSON, Kafka, AMQP, and more. Since there is a common data model,
+it is easy to translate between these different technologies.</p>
+<p>Knative eventing builds on top of that. Using Kubernetes custom resources, you can deploy event sources, sinks, and
+flows, and put translators between the steps. By default, Knative eventing uses the HTTP representation to exchange
+events between services, but it is possible to use other representations as well. </p>
+<p>As Knative is &quot;serverless&quot;, it can easily scale down to zero, but also scale up as needed.</p>
+<h3 id="endpoints">Endpoints</h3>
+<p>In order to support the idea of being protocol agnostic, we provide different protocol endpoints. For a start we have
+HTTP (in multiple dialects) and MQTT (v3 and v5). The endpoints are rather small processes, and only translate
+between their protocol and the cloud events representation.</p>
+<p>The endpoints are payload agnostic and stateless, they only forward what they receive to the next Knative event sink,
+and so they are pretty easy to implement.</p>
+<h3 id="kafka">Kafka</h3>
+<p>As there is a Kafka integration with Knative eventing, we are going to use that. The reason for that is simple: First of
+all, Kafka is known to scale well, so it fits our use case. Second, we can integrate with Kafka in two ways, using Knative
+or directly.</p>
+<p>Whenever we can, we try to use the Knative eventing APIs, trying to be interoperable and modular. However, we still
+have ability to directly interface with Kafka, and leverage solutions that are more Kafka focused.</p>
+<h2 id="an-example">An example</h2>
+<p>We are in the middle of building this, and you can find an early start at
+<a href="https://github.com/drogue-iot/drogue-cloud">drogue-iot/drogue-cloud</a> on GitHub. There isn't that much code, which is
+due to fact that we are still missing some important functionality. But also, because we are leveraging technology
+that already exists.</p>
+<p>Nevertheless, we are trying to create some end-to-end examples as early as possible. A simple one, publishing a
+temperature value, that ends up in a Grafana dashboard. A classic!</p>
+<p><img src="https://blog.drogue.io/the-cloud-side-of-things/example.svg" alt="Example" /></p>
+<p>When you take a look at this, please keep in mind what I wrote earlier: we are not trying to make this single,
+trivial use case as simple as possible. We try to provide a more versatile solution, that lets you focus on
+implementing a solution <strong>on top of</strong> IoT and that still allows you to scale, extend and adapt in the future.</p>
+<p>The beauty with the Knative APIs is, that you can easily re-arrange your services. Instead of Kafka as
+channel and source, you could to with some other implementation. Or directly connect the HTTP endpoint to the
+&quot;Influx DB pusher&quot;. Or put some conversion in the middle, …</p>
+<h2 id="what-is-next">What is next?</h2>
+<p>If you poke around in the repository, you will already find a few other things we are working on. However, I think this
+blog post is already long enough, but I also think the topic deserved a bit of introduction, just to explain what our
+motivation is, and were we are heading to.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud repository</a> </li>
+<li><a href="https://knative.dev">Knative</a></li>
+<li><a href="https://cloudevents.io">Cloud events</a></li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/the-cloud-side-of-things' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="getting-started" href="https://blog.drogue.io/the-cloud-side-of-things/#getting-started">Getting started</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="suddenly-things-get-complicated" href="https://blog.drogue.io/the-cloud-side-of-things/#suddenly-things-get-complicated">Suddenly things get complicated</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="what-we-need" href="https://blog.drogue.io/the-cloud-side-of-things/#what-we-need">What we need</a>
+                </li>
+                
+                <li>
+                  <a data-for="knative-cloud-events" href="https://blog.drogue.io/the-cloud-side-of-things/#knative-cloud-events">Knative &amp; Cloud events</a>
+                </li>
+                
+                <li>
+                  <a data-for="endpoints" href="https://blog.drogue.io/the-cloud-side-of-things/#endpoints">Endpoints</a>
+                </li>
+                
+                <li>
+                  <a data-for="kafka" href="https://blog.drogue.io/the-cloud-side-of-things/#kafka">Kafka</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="an-example" href="https://blog.drogue.io/the-cloud-side-of-things/#an-example">An example</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="what-is-next" href="https://blog.drogue.io/the-cloud-side-of-things/#what-is-next">What is next?</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="see-also" href="https://blog.drogue.io/the-cloud-side-of-things/#see-also">See also</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

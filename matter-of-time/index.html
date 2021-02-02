@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>It&#x27;s a Matter of Time &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="In the embedded world, quite often you don&#x27;t have a wall clock sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="It&#x27;s a Matter of Time" />
+<meta name="twitter:description" content="In the embedded world, quite often you don&#x27;t have a wall clock sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="It&#x27;s a Matter of Time">
+<meta property="og:url" content="https://blog.drogue.io/matter-of-time">
+<meta property="og:description" content="In the embedded world, quite often you don&#x27;t have a wall clock sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">It&#x27;s a Matter of Time</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1311">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-05'> 5 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;matter-of-time&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>In the embedded world, quite often you don't have a <em>wall clock</em> sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.</p>
+<span id="continue-reading"></span><h1 id="time-keeps-on-slipping-into-the-future">Time keeps on slipping... into the future...</h1>
+<p>When you're doing embedded Rust, sometimes you want to know how much time has passed, and sometimes you want to <em>pause</em> for some amount of time.</p>
+<p>The <code>embedded-hal</code> provides two useful types of traits:</p>
+<ul>
+<li>Delays</li>
+<li>Timers</li>
+</ul>
+<p>A <em>delay</em> provides a blocking operation which pauses execution for some amount of time.
+A <em>timer</em> allows you to know when some amount of time has elapsed.</p>
+<p>At least using my <a href="https://www.st.com/en/evaluation-tools/b-l4s5i-iot01a.html">current board</a>, based on the STM32L4 family, the HAL provides exactly 1 delay, but a large handful of timers.</p>
+<p>Why is this important?</p>
+<p>I'm trying to interface over <a href="https://en.wikipedia.org/wiki/Serial_Peripheral_Interface">SPI</a> to yet-another WiFi-offload board.</p>
+<p>This board, like many, needs certain pins raised and lowered. 
+It also needs you to wait a few milliseconds after raising or lowering the pin before you assume the board has dealt with the change.</p>
+<p>Roughly:</p>
+<ol>
+<li>Lower pin, signalling you are about to send some data.</li>
+<li>Wait 10 milliseconds.</li>
+<li>Send some data.</li>
+<li>Raise the pin signalling you are done sending data.</li>
+</ol>
+<h1 id="one-delay-multiple-timers">One Delay, Multiple Timers</h1>
+<p>As noted, often you might find yourself in an environment that only has one available Delay.
+And if your environment is RTIC, the framework itself may take the delay facilities for its own software task scheduling, leaving you with zero.
+Add to that multiple drivers that need to be able to delay every now and then, and you find yourself in a precarious situation.</p>
+<h1 id="no-unified-concept-of-time">No unified concept of <em>time</em></h1>
+<p>The various HALs may define their own time structures, their timers might work in terms of milliseconds or hertz, and in general
+it's quite difficult to write any device driver that can have assurances of how time is managed and recorded.</p>
+<h1 id="enter-embedded-time-and-drogue-embedded-timer">Enter <code>embedded-time</code> and <code>drogue-embedded-timer</code></h1>
+<h2 id="embedded-time"><code>embedded-time</code></h2>
+<p>Peter Taylor has been trying to create a unified view of time for the embedded world, suitable called <a href="https://crates.io/crates/embedded-time"><code>embedded-time</code></a>.
+It provides everything you could hope for in terms of units-of-time, duration and instance measurements, and conversions into/from rates.
+It does <em>not</em> provide bindings to hardware.</p>
+<h2 id="drogue-embedded-timer"><code>drogue-embedded-timer</code></h2>
+<p>The <a href="https://crates.io/crates/drogue-embedded-timer"><code>drogue-embedded-timer</code></a> library attempts to provide directly-usable bindings of
+Peter's <code>embedded-time</code> library to the embedded Rust HAL-centric world.</p>
+<h2 id="clocks">Clocks</h2>
+<p>At the bottom of the stack is an <code>embedded-time</code> <code>Clock</code>, which is a software device to measure the passage of time.
+It may have an arbitrary amount of precision, marking off individual microseconds, dozens of milliseconds, or entire seconds at each <em>tick</em>.</p>
+<h2 id="timers-and-delays">Timers (and Delays)</h2>
+<p>Once you have a clock that you can watch, you can then define a <code>Timer</code> which is capable of measuring some specific duration of time, according to that clock.
+If you make that timer pause until the duration of time has passed, you have yourself a <code>Delay</code>.</p>
+<h1 id="build-the-clock">Build the <code>Clock</code></h1>
+<p>As noted above, the clock can have whatever precision makes sense in your application. 
+If you need millisecond precision, you tick the clock every 1 millisecond.
+If you need less precision, maybe you tick it every 500 milliseconds, saving yourself some power along the way.
+If you have the need for <em>multiple</em> different precision clocks (one ticking microseconds while another ticks away seconds), that's also quite possible.</p>
+<p>Creating the clock is as easy as defining a static <code>Clock</code> of the precision you need.</p>
+<p>The <code>drogue-embedded-timer</code> library has a variety of different clocks set up for a variety of different precisions.
+Let's use a clock with 100ms precision:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">use </span><span style="color:#c0c5ce;">drogue_embedded_timer::MillisecondsClock100;
+
+</span><span style="color:#b48ead;">static </span><span style="color:#d08770;">CLOCK</span><span style="color:#c0c5ce;">: MillisecondsClock100 = MillisecondsClock100::new();
+</span></code></pre><h1 id="make-the-clock-tick">Make the <code>Clock</code> tick.</h1>
+<p>Okay, we have a clock, but it's just sitting there, frozen in time.
+Thankfully, the clock can provide an external remote-control that will tick it forward (100ms in this case) every time you push the button.
+The easiest way to push the button on a regular basis is using your HAL's <em>timers</em> and their associated interrupts.</p>
+<p>So on my board, the first thing I do is use <code>TIM15</code> and set it up to timeout every 100ms, so that it has a known rhythm that matches my <code>CLOCK</code> defined above:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> tim15 = Timer::tim15(device.</span><span style="color:#d08770;">TIM15</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">100</span><span style="color:#c0c5ce;">, clocks, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb2);
+</span></code></pre>
+<p>I enable the interrupt so that it fires ever time the timeout occurs, giving me a chance to push the button and advance my <code>CLOCK</code> ahead one 100ms tick:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">tim15.</span><span style="color:#96b5b4;">listen</span><span style="color:#c0c5ce;">(Event::TimeOut);
+</span></code></pre>
+<p>Since each HAL does things possibly differently, but we know an interrupt must be cleared once it's handled, you're able to provide a callback that will be executed for each tick, to give you a chance to do just that.
+The callback is actually in the form of an opaque object (usually your TIM* timer object), and a closure that can use that object.</p>
+<p>On my current board, I'm using the <code>TIM15</code> timer, and I have to call <code>timer.clear_interrupt(Event::TimeOut)</code> each time the ISR is invoked.</p>
+<p>Therefore, we need to pass that information to the <code>CLOCK</code> when we ask to get the ticker for it:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ticker = </span><span style="color:#d08770;">CLOCK</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">ticker</span><span style="color:#c0c5ce;">(tim15, 
+                          (|</span><span style="color:#bf616a;">t</span><span style="color:#c0c5ce;">| { t.</span><span style="color:#96b5b4;">clear_interrupt</span><span style="color:#c0c5ce;">(Event::TimeOut); }) as </span><span style="color:#b48ead;">fn</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut </span><span style="color:#c0c5ce;">Timer&lt;TIM15&gt;));
+</span></code></pre>
+<p>All that's left now is to actually wire up the interrupt handler to the <code>TIM15</code> interrupt.
+Using RTIC, I bind a task to it. I've also put the <code>ticker</code> into the shared resources so my ISR can access it.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">init::LateResources {
+    ticker,
+    ...
+}
+</span></code></pre><pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(binds = TIM15, priority = 15, resources = [ticker])]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">ticker</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: ticker::Context) {
+    ctx.resources.ticker.</span><span style="color:#96b5b4;">tick</span><span style="color:#c0c5ce;">();
+}
+</span></code></pre>
+<p>I make sure the priority of this ISR is pretty high, because I don't want my clock to slow down if the system is also under load doing other thing.</p>
+<p>At this point, <em>time is flowing forward</em>.</p>
+<h1 id="timers-delays">Timers &amp; Delays</h1>
+<p>Now the <code>CLOCK</code> static is a bonafide <code>embedded-time</code> <code>Clock</code> implementation, and can do all the things Peter's APIs allow you to do.</p>
+<p>You can create an <code>embedded-time</code> <code>Timer</code> and use it however you like:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">// Create a 10 second timer
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> timer = embedded_time::Timer::new(&amp;</span><span style="color:#d08770;">CLOCK</span><span style="color:#c0c5ce;">, Seconds(</span><span style="color:#d08770;">10</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+
+</span><span style="color:#65737e;">// Start the timer
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> timer = timer.</span><span style="color:#96b5b4;">start</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#65737e;">// Wait for 10 seconds to expire (blocking)
+</span><span style="color:#c0c5ce;">timer.</span><span style="color:#96b5b4;">wait</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Our use-case from the very top of this article, though, is being able to block for a little while.
+The <code>embedded-hal</code> provide two blocking <code>Delay</code> implementations.
+<code>drogue-embedded-timer</code> doesn't rely on <code>embedded-hal</code> so we provide an alternative <code>Delay</code> implementation, which is <code>embedded-time</code>-native.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">// Construct a new Delay
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> delay = </span><span style="color:#d08770;">CLOCK</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">delay</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#65737e;">// Delay for 4 seconds (blocking)
+</span><span style="color:#c0c5ce;">delay.</span><span style="color:#96b5b4;">delay</span><span style="color:#c0c5ce;">(Seconds(</span><span style="color:#d08770;">4</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+
+</span><span style="color:#65737e;">// Delay for 4000 milliseconds (blocking)
+</span><span style="color:#c0c5ce;">delay.</span><span style="color:#96b5b4;">delay</span><span style="color:#c0c5ce;">(Milliseconds(</span><span style="color:#d08770;">4000</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">));
+</span></code></pre>
+<p>One thing to keep in mind is that your delay will always be at least as long as the precision of your clock.
+Since we created a clock with 100 milliseconds of precision (1/10th of a second), our delay can be <em>no shorter than that</em>.
+Math also tells us our delay could end up being a hair less than <em>twice</em> the precision, depending on how long you're attempting to delay.
+It's wise to ensure the precision is half the time of your average delay.
+For instance, if you want to delay for 10 milliseconds, you should probably create a clock with a 5 millisecond precision.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>With a unified and abstracted way to consider time, timers and delays, device-drivers that need to understand time can be written more generically.
+It also means less shimming of your board-specific timers into whatever format your driver might want.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/matter-of-time' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="time-keeps-on-slipping-into-the-future" href="https://blog.drogue.io/matter-of-time/#time-keeps-on-slipping-into-the-future">Time keeps on slipping... into the future...</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="one-delay-multiple-timers" href="https://blog.drogue.io/matter-of-time/#one-delay-multiple-timers">One Delay, Multiple Timers</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="no-unified-concept-of-time" href="https://blog.drogue.io/matter-of-time/#no-unified-concept-of-time">No unified concept of time</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="enter-embedded-time-and-drogue-embedded-timer" href="https://blog.drogue.io/matter-of-time/#enter-embedded-time-and-drogue-embedded-timer">Enter embedded-time and drogue-embedded-timer</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="embedded-time" href="https://blog.drogue.io/matter-of-time/#embedded-time">embedded-time</a>
+                </li>
+                
+                <li>
+                  <a data-for="drogue-embedded-timer" href="https://blog.drogue.io/matter-of-time/#drogue-embedded-timer">drogue-embedded-timer</a>
+                </li>
+                
+                <li>
+                  <a data-for="clocks" href="https://blog.drogue.io/matter-of-time/#clocks">Clocks</a>
+                </li>
+                
+                <li>
+                  <a data-for="timers-and-delays" href="https://blog.drogue.io/matter-of-time/#timers-and-delays">Timers (and Delays)</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="build-the-clock" href="https://blog.drogue.io/matter-of-time/#build-the-clock">Build the Clock</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="make-the-clock-tick" href="https://blog.drogue.io/matter-of-time/#make-the-clock-tick">Make the Clock tick.</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="timers-delays" href="https://blog.drogue.io/matter-of-time/#timers-delays">Timers &amp; Delays</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="conclusion" href="https://blog.drogue.io/matter-of-time/#conclusion">Conclusion</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

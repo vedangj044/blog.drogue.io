@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Motion &amp; MPU-6050 &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="While the S in IoT stands for &amp;quot;security&amp;quot;, the T stands for &amp;quot;things&amp;quot;, and things move. 
+Wouldn&#x27;t it be nice to know how they move, exactly?
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Motion &amp; MPU-6050" />
+<meta name="twitter:description" content="While the S in IoT stands for &amp;quot;security&amp;quot;, the T stands for &amp;quot;things&amp;quot;, and things move. 
+Wouldn&#x27;t it be nice to know how they move, exactly?
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Motion &amp; MPU-6050">
+<meta property="og:url" content="https://blog.drogue.io/mpu-6050">
+<meta property="og:description" content="While the S in IoT stands for &amp;quot;security&amp;quot;, the T stands for &amp;quot;things&amp;quot;, and things move. 
+Wouldn&#x27;t it be nice to know how they move, exactly?
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Motion &amp; MPU-6050</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1059">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-19'>19 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;mpu-6050&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>While the <em>S</em> in IoT stands for &quot;security&quot;, the <em>T</em> stands for &quot;things&quot;, and things move. 
+Wouldn't it be nice to know how they move, exactly?</p>
+<span id="continue-reading"></span><h1 id="gyroscopes-gimbals">Gyroscopes &amp; Gimbals</h1>
+<p>A lot of manufactures have started putting gyroscopes into most everything.
+When you pair up 3 gyroscopes on each of the 3 real-world axes, you can start to understand how an object pivots around a point.
+With some advanced processing, these motion processors can keep track of the absolute position (relative to a calibrated start point),
+instead of just reporting &quot;turning left for 3 seconds...&quot;</p>
+<h1 id="i2c">i2c</h1>
+<p>While some of previous experiments worked with USART (serial ports) and SPI (another serial port), our chosen motion processing chip uses the i2c bus, which again is sorta a serial port.</p>
+<p>Unlike SPI, though, where we used a physical signal to select a chip for communications, with i2c, every device on the bus has its own address.
+Within a transaction, you address bytes to a device, and while the transaction is open, you can read bytes from the device.</p>
+<p>The content across the i2c bus is pretty device-specific, but there are some commonly-seen conventions.</p>
+<h2 id="registers">Registers</h2>
+<p>A lot of what occurs in the embedded world deals with registers, which are 1-to-4 (or more) bytes of addressable memory.
+Many i2c devices work with the same concept, allowing you to read and write values within registers on the device.</p>
+<p>To read a an imaginary register (<code>0xAB</code>), which can be addressed by a 1-byte address, and returns a 1-byte value:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#65737e;">// to hold the response returned
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> response = [</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">];
+
+</span><span style="color:#65737e;">// write the address of the register to read, to the device to read from
+</span><span style="color:#c0c5ce;">i2c.</span><span style="color:#96b5b4;">read</span><span style="color:#c0c5ce;">( device_address, [ </span><span style="color:#d08770;">0xAB </span><span style="color:#c0c5ce;">], &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> response )
+</span></code></pre>
+<p>To write an imaginary register (<code>0xAB</code>), which can be addressed by a 1-byte address, with a 1-byte value (<code>0x42</code>):</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">i2c.</span><span style="color:#96b5b4;">write</span><span style="color:#c0c5ce;">( device_address, [ </span><span style="color:#d08770;">0xAB</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x42 </span><span style="color:#c0c5ce;">] );
+</span></code></pre>
+<p>The device's reference manual should describe the registers and their values.
+As usual, many registers are bitfields, so you may have to read a register's and toggle specific bits within it before writing it back to the device.</p>
+<h2 id="the-mpu-6050">The MPU-6050</h2>
+<p>The <a href="https://invensense.tdk.com/products/motion-tracking/6-axis/mpu-6050/">InvenSense/TDK MPU-6050</a> is a small motion processor with 3 gyroscopes and matching accelerometers.
+For this post, we will only be exploring how to make the gyroscopes track movement.</p>
+<p><img src="/images/mpu-6050.jpg" alt="MPU-6050" /></p>
+<h3 id="raw-data">Raw Data</h3>
+<p>The easiest data to retrieve from the MPU-6050 is raw data from the gyroscopes and accelerometers, which is provided in <em>relative</em> terms.
+You can gain the degrees-per-time or G-forces-per-time for each axis at a given point in time.
+To consume these values though, you have to do a fair bit of math and bookkeeping on your own.</p>
+<h3 id="dmp-data">DMP Data</h3>
+<p>The MPU-6050 includes a <em>digital motion processor</em> (DMP).
+Ultimately, the entire MPU-6050 has its own MCU on-board and runs its own firmware.
+To take advantage of the DMP, though, you must load, after each power-up, the DMP firmware.
+Our Rust driver helps you out with that.</p>
+<p>The benefit of using the DMP is that the chip provides for the math and bookkeeping, providing you with a series of <a href="https://en.wikipedia.org/wiki/Quaternion"><em>quaternions</em></a> on a FIFO.
+A quaternion involves math significantly beyond my own comprehension, but the bottom line is that they represent an <em>absolute</em> rotation/position of the chip.
+A quaternion is a set of 4 numbers, which uniquely identify how the item is rotated around each of its axes.</p>
+<h2 id="visualizing">Visualizing</h2>
+<p>The <a href="https://threejs.org/">three.js</a> project provides a set of tools for working in three dimensional scenes within the browser.
+Even more importantly, it <em>also</em> works with quaternions.
+If we can connect the data being pumped from the MPU-6050 to the browser, then the physical motion process can replace two-dimension controls such as a mouse or trackpad.</p>
+<div class="video >">
+  <iframe style="height: 480px; width: 100%;" frameborder="0" src="//player.vimeo.com/video/470196465" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+</div>
+<h1 id="let-s-rust">Let's Rust</h1>
+<p>Since this is an i2c device, first we have to set up a typical i2c bus, however is appropriate for your board.</p>
+<p>For my board, after patching the HAL to support <code>i2c3</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> scl3 = gpioc.pc0.</span><span style="color:#96b5b4;">into_open_drain_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.otyper)
+                    .</span><span style="color:#96b5b4;">into_af4</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.afrl);
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> sda3 = gpioc.pc1.</span><span style="color:#96b5b4;">into_open_drain_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.otyper)
+                    .</span><span style="color:#96b5b4;">into_af4</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioc.afrl);
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> i2c = I2c::i2c3(device.</span><span style="color:#d08770;">I2C3</span><span style="color:#c0c5ce;">, (scl3, sda3), KiloHertz(</span><span style="color:#d08770;">100</span><span style="color:#c0c5ce;">), clocks, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb1r1);
+</span></code></pre>
+<p>Next we create an instance of the MPU-6050 driver attached to that i2c.
+Notice, we're using an <code>embedded-time</code>-based <code>Clock</code> as <a href="/matter-of-time/">described in a previous post</a>.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> sensor = Mpu6050::new(i2c, Address::default(), &amp;</span><span style="color:#d08770;">CLOCK</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>It can have one of two predetermined i2c addresses, based on if an extra connection is made. 
+We're using the default address.</p>
+<p>We stuff that into our RTIC shared resources, and pick it up later, in our idle task once the clock is ticking forward.</p>
+<h2 id="use-the-sensor">Use the Sensor</h2>
+<p>Since we want to have to think less about math, we <code>initialize_dmp()</code> to ensure the chip is ready to do our bidding with absolute positioning information:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> sensor: &amp;</span><span style="color:#b48ead;">mut </span><span style="color:#c0c5ce;">Mpu6050&lt;&#39;_, _, _&gt; = ctx.resources.sensor;
+sensor.</span><span style="color:#96b5b4;">initialize_dmp</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Now, all the important information will be heading towards us through a FIFO, in 28-byte packets.
+You <em>can</em> drive reading the FIFO from an interrupt if you prefer, but here we're running in a simple loop.
+As long as there's at least one packet of 28 bytes available, we read it out:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> len = sensor.</span><span style="color:#96b5b4;">get_fifo_count</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+    </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> len &gt;= </span><span style="color:#d08770;">28 </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> buf = [</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">28</span><span style="color:#c0c5ce;">];
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> buf = sensor.</span><span style="color:#96b5b4;">read_fifo</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> buf).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+         ...
+    }
+}
+</span></code></pre>
+<p>Now that you have a <code>[u8;28]</code> of bytes, knowing how the packet is constructed is helpful.
+Today, we will use the knowledge that the first 16 bytes are the quaternion in <code>(w, x, y, z)</code> format, 4 bytes for each portion.</p>
+<p>We can either feed that to the <code>Quaternion::from_bytes(...)</code> to use it on-board, or we can shuffle it straightaway unprocessed to the visualizer.</p>
+<p>We choose the second option in this case.</p>
+<p><img src="/images/mpu-6050-diagram.png" alt="Architecture diagram" /></p>
+<h1 id="tie-it-all-together">Tie it all together</h1>
+<p>Hopefully this post has helped see how we can tie together a bag of disparate drivers, protocols, technologies and languages
+into a single functioning <em>system</em>.</p>
+<p>The crate to accomplish all of this from the embedded side is <a href="https://crates.io/crates/drogue-mpu-6050"><code>drogue-mpu-6050</code></a> and it is available on crates.io.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/mpu-6050' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="gyroscopes-gimbals" href="https://blog.drogue.io/mpu-6050/#gyroscopes-gimbals">Gyroscopes &amp; Gimbals</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="i2c" href="https://blog.drogue.io/mpu-6050/#i2c">i2c</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="registers" href="https://blog.drogue.io/mpu-6050/#registers">Registers</a>
+                </li>
+                
+                <li>
+                  <a data-for="the-mpu-6050" href="https://blog.drogue.io/mpu-6050/#the-mpu-6050">The MPU-6050</a>
+                </li>
+                
+                <li>
+                  <a data-for="visualizing" href="https://blog.drogue.io/mpu-6050/#visualizing">Visualizing</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="let-s-rust" href="https://blog.drogue.io/mpu-6050/#let-s-rust">Let&#x27;s Rust</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="use-the-sensor" href="https://blog.drogue.io/mpu-6050/#use-the-sensor">Use the Sensor</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="tie-it-all-together" href="https://blog.drogue.io/mpu-6050/#tie-it-all-together">Tie it all together</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

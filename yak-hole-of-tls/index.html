@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Down the Yak Hole of TLS &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="We&#x27;ve recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP&#x2F;IP, helping protect data in-flight between two parties.
+There&#x27;s a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let&#x27;s dive in, shall we?
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Down the Yak Hole of TLS" />
+<meta name="twitter:description" content="We&#x27;ve recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP&#x2F;IP, helping protect data in-flight between two parties.
+There&#x27;s a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let&#x27;s dive in, shall we?
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Down the Yak Hole of TLS">
+<meta property="og:url" content="https://blog.drogue.io/yak-hole-of-tls">
+<meta property="og:description" content="We&#x27;ve recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP&#x2F;IP, helping protect data in-flight between two parties.
+There&#x27;s a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let&#x27;s dive in, shall we?
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Down the Yak Hole of TLS</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>10 minute read</span>
+        <meta itemprop="wordCount" content="1801">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-09-18'>18 September 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;yak-hole-of-tls&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>We've recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP/IP, helping protect data in-flight between two parties.
+There's a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let's dive in, shall we?</p>
+<span id="continue-reading"></span><h1 id="between-rust-and-tls-there-are-a-lot-of-yaks-to-shave">Between Rust and TLS, there are a lot of yaks to shave</h1>
+<p><strong>Warning: This will be a long and winding blogpost. Grab a cup of coffee.</strong></p>
+<h1 id="never-write-a-crypto-library">Never write a crypto library</h1>
+<p>One of the primary rules in cryptography is <em>never write your own cryptography</em>.
+There's a lot of smart people already writing crypto libraries, and also a lot of smart people who are happy to poke holes in your hand-rolled crypto.</p>
+<p>Thankfully, ARM has created <a href="https://tls.mbed.org/">mbedTLS</a> and donated it to <a href="https://www.trustedfirmware.org/">TrustedFirmware.org</a>.
+That sounds perfect, yeah?</p>
+<p>The downside of <em>mbedTLS</em> is that it's written in C, and is able to target not only embedded platforms, but also fully POSIX-compliance large host systems,
+which means it is <em>highly configurable</em> and not immediately useful to Rust developers.</p>
+<h1 id="rust-c-and-ffi">Rust, C, and FFI</h1>
+<p>Rust <em>does</em> provide mechanisms for calling into libraries written in C. 
+They are inherently <code>unsafe</code> because Rust, rightly, can't trust a library written in C to understand things like <em>lifetimes</em> and Rust's own memory model.</p>
+<p>So normally, you find yourself with a <code>-sys</code> crate that simply builds the C library, and then wrap that with a Rust crate that provides better safety and semantics.</p>
+<p>Then there's issues such as &quot;Rust strings are valid UTF-8 and know their length&quot; and &quot;C strings are a sequence of bytes followed by a null&quot;, which complicates matters.</p>
+<h2 id="the-drogue-tls-sys-crate">The <code>drogue-tls-sys</code> crate</h2>
+<p>The first order of business is simply building the mbedTLS library, appropriately configured for an ARM Cortex-M embedded device which lacks things like filesystems, a real-time clock or <code>printf()</code>.</p>
+<p>Everything configurable with mbedTLS is done through a <code>config.h</code> file they ship, defining or undefining a variety of macros which indicate what facilities your platform supports.</p>
+<p>By telling mbedTLS that our platform doesn't support traditional things like <code>calloc(..)</code>/<code>free(...)</code> or <code>snprintf(...)</code>,  mbedTLS gives us a way to register function-pointers to those types of things for our platform.  <em>C function pointers</em>.</p>
+<h3 id="let-s-look-at-calloc">Let's look at <code>calloc(...)</code></h3>
+<p>Once we configure it, mbedTLS gives us this function:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-C" data-lang="C"><span style="color:#b48ead;">int </span><span style="color:#8fa1b3;">mbedtls_platform_set_calloc_free</span><span style="color:#c0c5ce;">( </span><span style="color:#b48ead;">void </span><span style="color:#c0c5ce;">* (*calloc_func)( size_t, size_t ),
+                                      </span><span style="color:#b48ead;">void </span><span style="color:#c0c5ce;">(*free_func)( </span><span style="color:#b48ead;">void </span><span style="color:#c0c5ce;">* ) );
+</span></code></pre>
+<p>This allows us to register functions that behave as <code>calloc(...)</code> and <code>free(...)</code>, allocating and freeing memory on the heap.</p>
+<p>By default, embedded Rust doesn't have a heap.</p>
+<p>You can install an allocator to give you a heap, but then you also have to install an allocation error handler, which unfortunately is an unstable <em>nightly-only</em> feature of Rust.</p>
+<p>How do we solve this?</p>
+<p>We fork <a href="https://crates.io/crates/alloc-cortex-m">alloc-cortex-m</a>, and a bit of the Rust alloc crates <a href="https://github.com/drogue-iot/drogue-tls/tree/master/drogue-tls/src/platform">into our tree</a>.</p>
+<p>The only reason we have to fork them is because using them directly triggers <code>rustc</code> into being convinced we have a global allocator and need to install the allocation error handler, which as noted above, is nightly-only.</p>
+<h4 id="allocation-in-rust">Allocation in Rust</h4>
+<p>Rust does allocation using a <code>Layout</code> which basically embodies the size of memory you request, along with adjustments for accomodate memory alignment for your platform.
+Rust also wants the <em>exact same layout</em> passed in when you deallocate memory, unlike C's <code>free(...)</code> which only needs a pointer to the memory, because it put the layout information in a header of the initial allocation.</p>
+<p>How do we solve that? The same way C does, by not expecting the caller to track the layout information, but by scribbling it into the start of the allocation ourselves, also.</p>
+<p>If mbedTLS needs 16 bytes allocated, it'll call <code>calloc(1, 16)</code> to ask for 1 chunk of 16 bytes.</p>
+<p>To that, we add 8 bytes for our book-keeping header, so the allocation will ultimately become 24 bytes. The extra 8 bytes track 2 <code>usize</code> slots for our book-keeping: 1 for the size of the allocation (24 bytes total) and one for the alignment requirements. Since our header takes the first 8 bytes, we return the pointer to the 9th byte, which starts the chunk of 16 bytes requested by the caller of <code>calloc(...)</code>.</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">byte |0   |1   |2   |3   |4   |5   |6   |7   |8+
+     |----|----|----|----|----|----|----|----|-----------------------
+ use |alloc_size         |alignment          |handed back to caller  
+</span></code></pre>
+<p>When <code>free(...)</code> is called with only a pointer from C code, we back-track 8 bytes, read out the size and alignment values and rebuild our <code>Layout</code> to shuffle on into Rust's allocator's <code>dealloc(...)</code> method.</p>
+<p>This allows us to avoid any external book-keeping, and just tacking an extra 8 bytes onto the head of each allocation.</p>
+<h2 id="bindgen">Bindgen</h2>
+<p>So far we've glossed over how we <em>actually</em> interface from Rust to C and back.</p>
+<p>The answer is <a href="https://crates.io/crates/bindgen">bindgen</a>, which consumes C header files and produces <code>unsafe</code> Rust bindings to the API. </p>
+<p>Since Rust has no concept of <code>null</code>, but C pointers can certainly be null, each pointer tends to get wrapped in a <code>Option</code> on the Rust side.</p>
+<p>We can use the <code>extern &quot;C&quot;</code> syntax to write a function in Rust that can be called from C with the appropriate calling conventions. </p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">extern </span><span style="color:#c0c5ce;">&quot;</span><span style="color:#a3be8c;">C</span><span style="color:#c0c5ce;">&quot; </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">platform_calloc_f</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">count</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">, </span><span style="color:#bf616a;">size</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">) -&gt; </span><span style="color:#b48ead;">*mut</span><span style="color:#c0c5ce;"> c_void {
+  </span><span style="color:#65737e;">// do the Layout and allocation dance described above
+</span><span style="color:#c0c5ce;">}
+</span></code></pre>
+<p>Bindgen's processing of mbedTLS also provides us a Rust-callable function <code>platform_set_calloc_free(...)</code> exposed by mbedTLS. 
+This is where we finally wire stuff up.
+But, it's an <code>unsafe</code> function that takes function pointers as arguments, so we have to wrap the invocation of it in an <code>unsafe { ... }</code> block, and wrap our functions in an <code>Option::Some(...)</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">unsafe </span><span style="color:#c0c5ce;">{ </span><span style="color:#96b5b4;">platform_set_calloc_free</span><span style="color:#c0c5ce;">(Some(platform_calloc_f), Some(platform_free_f)) };
+</span></code></pre>
+<p>And now we've <em>finally</em> provided mbedTLS the ability to allocate and deallocate some heap-ish memory.</p>
+<h2 id="variadics">Variadics</h2>
+<p>When working with TLS and doing FFI in general, you need to be able to debug what's actually going on, particular in the two weeks you're banging your head on the table trying to figure out how it all works.
+Just like <code>calloc(...)</code> above, mbedTLS allows you to pass in a debug logging function. 
+The problem is that the things the debug logging function prints tend to be constructed using variants of <code>sprintf(...)</code>, which is a <em>variadic</em> function, meaning it can take an unlimited number of arguments to populate the formatting string.</p>
+<p>For instance:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-C" data-lang="C"><span style="color:#bf616a;">printf</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#d08770;">%s</span><span style="color:#a3be8c;"> says </span><span style="color:#d08770;">%s %d</span><span style="color:#a3be8c;"> times</span><span style="color:#c0c5ce;">&quot;, bob_str, hi_str, </span><span style="color:#d08770;">42</span><span style="color:#c0c5ce;">);
+</span></code></pre>
+<p>Would print out &quot;Bob says Hi 42 times&quot;.</p>
+<p>Stable Rust does not support variadics.</p>
+<p>In our case, the two important methods are <code>snprintf(...)</code> which is a true variadic function, and <code>vsnprintf(...)</code> which is slightly less variadic, in that there's an argument that points to the remainder argument list.</p>
+<p>It's trivial to write an implementation of <code>snprintf(...)</code> in C that delegates to <code>vsnprintf(...)</code> which <em>can</em> then be implemented, non-variadically, in Rust.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-C" data-lang="C"><span style="color:#b48ead;">extern int </span><span style="color:#8fa1b3;">snprintf</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">char </span><span style="color:#c0c5ce;">* </span><span style="color:#b48ead;">restrict </span><span style="color:#bf616a;">str</span><span style="color:#c0c5ce;">, size_t </span><span style="color:#bf616a;">size</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">const char </span><span style="color:#c0c5ce;">* </span><span style="color:#b48ead;">restrict </span><span style="color:#bf616a;">fmt</span><span style="color:#c0c5ce;">, ...) {
+    va_list ap;
+    </span><span style="color:#b48ead;">int</span><span style="color:#c0c5ce;"> n;
+
+    </span><span style="color:#96b5b4;">va_start</span><span style="color:#c0c5ce;">(ap,fmt);
+    n=</span><span style="color:#96b5b4;">vsnprintf</span><span style="color:#c0c5ce;">(str,size,fmt,ap);
+    </span><span style="color:#96b5b4;">va_end</span><span style="color:#c0c5ce;">(ap);
+
+    </span><span style="color:#b48ead;">return</span><span style="color:#c0c5ce;"> n;
+}
+</span></code></pre>
+<p>The <code>va_start(...)</code> macro ultimately populates the <code>ap</code> variable with a pointer to the arguments. 
+The arguments are really viewed as an opaque blob of memory, so you must analyze the <code>printf</code> formatting string to know how to treat the bytes behind that pointer.</p>
+<p>We've create the <a href="https://crates.io/crates/drogue-ffi-compat">drogue-ffi-compat</a> crate to help deal with that memory interpretation.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">no_mangle</span><span style="color:#c0c5ce;">]
+</span><span style="color:#b48ead;">pub extern </span><span style="color:#c0c5ce;">&quot;</span><span style="color:#a3be8c;">C</span><span style="color:#c0c5ce;">&quot; </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">vsnprintf</span><span style="color:#c0c5ce;">(
+    </span><span style="color:#bf616a;">str</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">*mut u8</span><span style="color:#c0c5ce;">,
+    </span><span style="color:#bf616a;">size</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">,
+    </span><span style="color:#bf616a;">format</span><span style="color:#c0c5ce;">: </span><span style="color:#b48ead;">*const u8</span><span style="color:#c0c5ce;">,
+    </span><span style="color:#bf616a;">ap</span><span style="color:#c0c5ce;">: va_list,
+) -&gt; </span><span style="color:#b48ead;">i32 </span><span style="color:#c0c5ce;">{
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> va_list = VaList::from(ap);
+    </span><span style="color:#65737e;">// use the Rust VaList now
+</span><span style="color:#c0c5ce;">}
+</span></code></pre>
+<p>Now, if you process the <code>printf</code> formatting string and see a <code>%d</code> you know the next argument is an <code>i32</code> in Rust:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> value: </span><span style="color:#b48ead;">i32 </span><span style="color:#c0c5ce;">= va_list.va_arg::&lt;</span><span style="color:#b48ead;">i32</span><span style="color:#c0c5ce;">&gt;();
+</span></code></pre>
+<p>If it's followed by a <code>%c</code> you know you can safely interpret the following argument as a character:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> value: </span><span style="color:#b48ead;">char </span><span style="color:#c0c5ce;">= va_list.va_arg::&lt;</span><span style="color:#b48ead;">char</span><span style="color:#c0c5ce;">&gt;();
+</span></code></pre>
+<p>Of course, things will go woefully wrong if you don't have a <code>printf</code> formatting string to guide you through walking the <code>va_list</code> values.</p>
+<p>The <code>drogue-ffi-compat</code> crate thankfully includes Just Enough printf formatting string processing to debug mbedTLS.</p>
+<p>Just like registering our <code>calloc()</code> and <code>free()</code> implementation with mbedTLS, we can now register our <code>snprintf()</code> and <code>vsnprintf()</code> implementations the same way, using similar functions (not pictured, because yeesh, this is getting long).</p>
+<h1 id="the-drogue-tls-crate">The <code>drogue-tls</code> crate</h1>
+<p>The <a href="https://crates.io/crates/drogue-tls">drogue-tls</a> crate handily wraps up all the machinations above into a <em>safe</em> and more semantic API for dealing with TLS.
+It provides an associated function to initialize the system and it sets up the debug logging, etc, and then provides a <code>TcpStack</code> for doing network operations.</p>
+<h1 id="that-s-a-lot-of-yaks-let-s-tls">That's a lot of yaks. Let's TLS.</h1>
+<p>Remember, we're doing this so we can put TLS on top of our TCP/IP connections.</p>
+<p>If you recall from a <a href="https://blog.drogue.io/wifi-offload/">previous blogpost</a>, we have created a TCP stack based on using an ESP8266 over our USART. 
+We're still doing that. 
+But now we'll initialize the TLS platform and wrap it around that network stack to give us a secure network stack.</p>
+<p>First, we initialize, providing a 48kb blob of memory for the heap-ish allocation.
+We also set up a (terrible) entropy source (this needs to be improved) and see the random-number-generator (RNG):</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> ssl_platform = SslPlatform::setup(
+    cortex_m_rt::heap_start() as </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">,
+    </span><span style="color:#d08770;">1024 </span><span style="color:#c0c5ce;">* </span><span style="color:#d08770;">48</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+ssl_platform.</span><span style="color:#96b5b4;">entropy_context_mut</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">add_source</span><span style="color:#c0c5ce;">(StaticEntropySource);
+
+ssl_platform.</span><span style="color:#96b5b4;">seed_rng</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Once our previously-described underlying network stack is fired up and ready to rock, we can borrow it and build ourselves a secure network stack:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> ssl_config = ssl_platform.</span><span style="color:#96b5b4;">new_client_config</span><span style="color:#c0c5ce;">(Transport::Stream, Preset::Default).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+ssl_config.</span><span style="color:#96b5b4;">authmode</span><span style="color:#c0c5ce;">(Verify::None);
+
+</span><span style="color:#65737e;">// consume the config, take a non-mutable ref to the network.
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> secure_network = SslTcpStack::new(ssl_config, &amp;network);
+</span></code></pre>
+<p>Note, we haven't enabled verification of authentication on the far end. Normally we would have some root Certificate Authority (CA) keys set up and ensure the far end of the connection is who we think it is.
+We're skipping that this week.</p>
+<p>Our <code>secure_network</code> also implements <code>TcpStack</code> so we can use it exactly as we used our non-secure stack:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> socket = secure_network.</span><span style="color:#96b5b4;">open</span><span style="color:#c0c5ce;">(Mode::Blocking).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> socket_addr = SocketAddr::new(
+    IpAddr::from_str(&quot;</span><span style="color:#a3be8c;">192.168.1.220</span><span style="color:#c0c5ce;">&quot;).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">(),
+    </span><span style="color:#d08770;">8080</span><span style="color:#c0c5ce;">,
+);
+
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> socket = secure_network.</span><span style="color:#96b5b4;">connect</span><span style="color:#c0c5ce;">(socket, socket_addr).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = secure_network.</span><span style="color:#96b5b4;">write</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> socket, </span><span style="color:#b48ead;">b</span><span style="color:#c0c5ce;">&quot;</span><span style="color:#a3be8c;">GET / HTTP/1.1</span><span style="color:#96b5b4;">\r\n</span><span style="color:#a3be8c;">host:192.168.1.220</span><span style="color:#96b5b4;">\r\n\r\n</span><span style="color:#c0c5ce;">&quot;).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>And we're secure (roughly) in knowledge that our bytes to and from the far end are travelling over an encrypted connection.</p>
+<p>That was fun, yeah?</p>
+<h1 id="next-steps">Next Steps</h1>
+<ul>
+<li><a href="https://twitter.com/bitshiftmask/status/1306776561123762176?s=20">Better entropy sources</a></li>
+<li>Certificate handling and validation for both sides of the conversation.</li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/yak-hole-of-tls' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="between-rust-and-tls-there-are-a-lot-of-yaks-to-shave" href="https://blog.drogue.io/yak-hole-of-tls/#between-rust-and-tls-there-are-a-lot-of-yaks-to-shave">Between Rust and TLS, there are a lot of yaks to shave</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="never-write-a-crypto-library" href="https://blog.drogue.io/yak-hole-of-tls/#never-write-a-crypto-library">Never write a crypto library</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="rust-c-and-ffi" href="https://blog.drogue.io/yak-hole-of-tls/#rust-c-and-ffi">Rust, C, and FFI</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="the-drogue-tls-sys-crate" href="https://blog.drogue.io/yak-hole-of-tls/#the-drogue-tls-sys-crate">The drogue-tls-sys crate</a>
+                </li>
+                
+                <li>
+                  <a data-for="bindgen" href="https://blog.drogue.io/yak-hole-of-tls/#bindgen">Bindgen</a>
+                </li>
+                
+                <li>
+                  <a data-for="variadics" href="https://blog.drogue.io/yak-hole-of-tls/#variadics">Variadics</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="the-drogue-tls-crate" href="https://blog.drogue.io/yak-hole-of-tls/#the-drogue-tls-crate">The drogue-tls crate</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="that-s-a-lot-of-yaks-let-s-tls" href="https://blog.drogue.io/yak-hole-of-tls/#that-s-a-lot-of-yaks-let-s-tls">That&#x27;s a lot of yaks. Let&#x27;s TLS.</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="next-steps" href="https://blog.drogue.io/yak-hole-of-tls/#next-steps">Next Steps</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

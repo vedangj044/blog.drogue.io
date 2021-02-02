@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Nom Parser &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the nom crate brings parser combinators to the embedded Rust world.
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Nom Parser" />
+<meta name="twitter:description" content="Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the nom crate brings parser combinators to the embedded Rust world.
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Nom Parser">
+<meta property="og:url" content="https://blog.drogue.io/nom-parser">
+<meta property="og:description" content="Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the nom crate brings parser combinators to the embedded Rust world.
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Nom Parser</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1325">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-13'>13 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;nom-parser&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the <a href="https://crates.io/crates/nom">nom crate</a> brings <a href="https://en.wikipedia.org/wiki/Parser_combinator">parser combinators</a> to the embedded Rust world.</p>
+<span id="continue-reading"></span><h1 id="parser-combinators">Parser Combinators</h1>
+<p>As their name implies, <em>parser combinators</em> are things that can parse inputs, and can be combined to parse even more complex input.
+Similar to LL(k) type of parsing, small atoms are built up into larger, more capable parsing.</p>
+<h1 id="why-we-parse">Why we parse</h1>
+<p>So far we've implemented two drivers for WiFi-offloading boards. 
+Both of these boards used some variant of Hayes AT commands in order to communicate with your primary device.</p>
+<p>For instance, when joining a WiFi access point, the eS-WiFi board might reply one of two ways:</p>
+<p>If successful:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">[JOIN ] myssid,192.168.2.18,0,0
+OK
+&gt; 
+</span></code></pre><pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">[JOIN ] myssid
+[JOIN ] Failed
+ERROR
+&gt; 
+</span></code></pre>
+<p>For the device-driver to be able to turn that into an <code>Ok</code> or an <code>Err</code>, we have to pluck apart the bits.</p>
+<h2 id="the-parser">The parser</h2>
+<p>To start, we notice that every response concludes with a <code>&gt; </code> on a new line.</p>
+<p>That parser is pretty easy to write with <code>nom</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;"> prompt,
+    tag!(&quot;</span><span style="color:#a3be8c;">&gt; </span><span style="color:#c0c5ce;">&quot;)
+);
+</span></code></pre>
+<p>This creates a function named <code>prompt()</code> that can take a slice of <code>[u8]</code> and attempt to match a <code>&gt;</code> followed by a space.</p>
+<p>We notice in the successful case, like so many other commands, we might also need to match <code>OK</code> on a regular basis.</p>
+<p>Let's create a rule for that:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;"> ok,
+    tag!(&quot;</span><span style="color:#a3be8c;">OK</span><span style="color:#96b5b4;">\r\n</span><span style="color:#c0c5ce;">&quot;)
+);
+</span></code></pre>
+<p>Additionally, any error response will include the word <code>ERROR</code>, so let's make a rule there.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;"> error,
+    tag!(&quot;</span><span style="color:#a3be8c;">ERROR</span><span style="color:#96b5b4;">\r\n</span><span style="color:#c0c5ce;">&quot;)
+);
+</span></code></pre>
+<p>Also pretty straight-forward.</p>
+<p>In the successful case, there's more useful information, such as the assigned IP address that we might want to parse out of the response.
+Ignoring the <code>OK</code> and the <code>&gt; </code> prompt, we can write a pretty quick parser:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">crate</span><span style="color:#c0c5ce;">) join&lt;JoinResponse&gt;,
+    do_parse!(
+        tag!(&quot;</span><span style="color:#a3be8c;">[JOIN   ] </span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        ssid: take_until!(&quot;</span><span style="color:#a3be8c;">,</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        </span><span style="color:#b48ead;">char</span><span style="color:#c0c5ce;">!(&#39;</span><span style="color:#a3be8c;">,</span><span style="color:#c0c5ce;">&#39;) &gt;&gt;
+        ip: take_until!(&quot;</span><span style="color:#a3be8c;">,</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        </span><span style="color:#b48ead;">char</span><span style="color:#c0c5ce;">!(&#39;</span><span style="color:#a3be8c;">,</span><span style="color:#c0c5ce;">&#39;) &gt;&gt;
+        tag!(&quot;</span><span style="color:#a3be8c;">0,0</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        tag!(&quot;</span><span style="color:#96b5b4;">\r\n</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        ok &gt;&gt;
+        (
+            JoinResponse::Ok
+        )
+    )
+);
+</span></code></pre>
+<p>Notice we don't have to specifically match many bits. 
+We look for the <code>[JOIN   ] </code> blob, and then match everything until the first comma as the SSID. 
+We consume that comma, and everything until the next comma is the assigned IP address.
+Then you notice, we are using the <code>ok</code> parser we already created, to match the <code>OK\r\n</code>.
+We've chosen to not match the prompt just yet.</p>
+<p>The other response, the error case, we can write a very loose parser to match:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">crate</span><span style="color:#c0c5ce;">) join_error&lt;JoinResponse&gt;,
+    do_parse!(
+        take_until!( &quot;</span><span style="color:#a3be8c;">ERROR</span><span style="color:#c0c5ce;">&quot; ) &gt;&gt;
+        error &gt;&gt;
+        (
+            JoinResponse::JoinError
+        )
+    )
+);
+</span></code></pre>
+<p>Basically, we decide to ignore most everything, and match using our <code>error</code> rule above.
+Of course, that <code>join_error</code> parse rule is pretty ambiguous, but we'll solve that shortly.</p>
+<h2 id="combining-parsers">Combining parsers</h2>
+<p>With <code>nom</code> you create your rules, and then you pick one, and attempt to parse a slice of bytes.
+It either successfully parses, returning a result along with any remainder slice of unparsed bytes,
+or it returns an error, indicating all bytes remain unparsed.</p>
+<p>While we're combined the <code>ok</code> and <code>error</code> parsers into the <code>join</code> and <code>join_error</code> parsers,
+we need some way to glue those two together as another higher-order parser.</p>
+<p>Thankfully, <code>nom</code> gives us the <code>alt!(..)</code> macro to do just that. 
+As long as your rules return the same type of result (both are <code>JoinResponse</code> in our case),
+they can be <code>alt!</code>'d together.</p>
+<p>A first attempt might look like:</p>
+<p><strong>Warning, will not work as you might hope</strong></p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">crate</span><span style="color:#c0c5ce;">) join_response&lt;JoinResponse&gt;,
+    do_parse!(
+        tag!(&quot;</span><span style="color:#96b5b4;">\r\n</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        response:
+        alt!(
+              join
+            | join_error
+        ) &gt;&gt;
+        prompt &gt;&gt;
+        (
+            response
+        )
+
+    )
+);
+</span></code></pre>
+<p>First, before we address <em>why</em> it doesn't work, let's deconstruct it a bit.</p>
+<p>Every response starts with a <code>\r\n</code> sequence, which we did not put in either rule, so we match it regardless on our aggregate rule.
+Then we pick with <code>join</code> or <code>join_error</code> and assign it to the <code>response</code> variable.
+Then we finally match the always trailing <code>prompt</code> and return the matches response.</p>
+<p>Why doesn't this work?</p>
+<p>Because <code>nom</code> allows for streaming parsing, knowing that maybe it didn't completely parse something this time, but once you add a few more bytes, maybe it'll match next time.</p>
+<p>Given the definition of <code>join</code>, we match a given prefix up to a comma.
+In the error case, the comma is not present. 
+You might think that'd force it to attempt the second option of <code>join_error</code> which requires no comma, but nom is an optimist. 
+Parsing of <code>join</code> did <em>not fail</em>, it just hadn't yet succeeded.</p>
+<p>Given the way we use the parser, though, we know in our case there are no additional bytes to be expected.
+What you've got is all there is, so let's let <code>nom</code> know that by wrapping the rules with <code>complete!(...)</code>.
+This signals that a rule that has not yet succeeded should be considered a failure, and for nom to continue evaluating other alternatives.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub</span><span style="color:#c0c5ce;">(</span><span style="color:#b48ead;">crate</span><span style="color:#c0c5ce;">) join_response&lt;JoinResponse&gt;,
+    do_parse!(
+        tag!(&quot;</span><span style="color:#96b5b4;">\r\n</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        response:
+        alt!(
+              complete!(join)
+            | complete!(join_error)
+        ) &gt;&gt;
+        prompt &gt;&gt;
+        (
+            response
+        )
+
+    )
+);
+</span></code></pre>
+<p>Now, all we have to do is use the parser, and we'll get back the result we're hoping for:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> parse_result = parser::join_response(&amp;bytes);
+
+</span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> parse_result {
+    Ok((_remainder, response)) =&gt; {
+        </span><span style="color:#b48ead;">match</span><span style="color:#c0c5ce;"> response {
+            JoinResponse::Ok =&gt; {
+                </span><span style="color:#65737e;">// yay!
+            </span><span style="color:#c0c5ce;">}
+            JoinResponse::JoinError =&gt; {
+                </span><span style="color:#65737e;">// bad password or ssid or such
+            </span><span style="color:#c0c5ce;">}
+        }
+    }
+    Err(_) =&gt; {
+        </span><span style="color:#65737e;">// something went woefully wrong during parsing
+    </span><span style="color:#c0c5ce;">}
+}
+</span></code></pre>
+<p>In this case, we know the slice we parsed was complete, so we can ignore the <code>_remainder</code> since it should, in theory, be empty.</p>
+<h1 id="more-complex">More complex</h1>
+<p>We've also published an uber-tiny <a href="https://crates.io/crates/drogue-nom-utils"><code>drogue-nom-utils</code> crate</a> to provide helper and utility parsers that we have used more than once.</p>
+<p>Some of these adapters will transmit a response like the following to indicate a certain amount of data is available for a certain connection:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">+IPD,&lt;link_id&gt;,&lt;length&gt;
+</span></code></pre>
+<p>The length portion is simply the characters that make up the length, such as <code>1024</code>; a <code>1</code> followed by a <code>0</code> followed by a <code>2</code> and a <code>4</code>. 
+So we need to parse that as an actual numeric type, not an array of 4 number-looking ASCII characters.
+The conversion of ASCII to numbers is usually easy, unless you're <code>no_std</code> so we have our own <code>atoi_usize</code> to do that for <code>usize</code>-sized numbers.
+To make a parser combinator that can parse a sequence of ASCII digits and return a single <code>usize</code>, we write a function in the style of <code>nom</code>:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">parse_usize</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">input</span><span style="color:#c0c5ce;">: &amp;[</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">]) -&gt; IResult&lt;&amp;[</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">], </span><span style="color:#b48ead;">usize</span><span style="color:#c0c5ce;">&gt; {
+    </span><span style="color:#b48ead;">let </span><span style="color:#c0c5ce;">(input, digits) = </span><span style="color:#96b5b4;">digit1</span><span style="color:#c0c5ce;">(input)?;
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> num = </span><span style="color:#96b5b4;">atoi_usize</span><span style="color:#c0c5ce;">(digits).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+    IResult::Ok((input, num))
+}
+</span></code></pre>
+<p>Which can then be used like:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">named!(
+    </span><span style="color:#b48ead;">pub </span><span style="color:#c0c5ce;">data_available&lt;Response&gt;,
+    do_parse!(
+        opt!( crlf ) &gt;&gt;
+        tag!( &quot;</span><span style="color:#a3be8c;">+IPD,</span><span style="color:#c0c5ce;">&quot;) &gt;&gt;
+        link_id: parse_usize &gt;&gt;
+        </span><span style="color:#b48ead;">char</span><span style="color:#c0c5ce;">!(&#39;</span><span style="color:#a3be8c;">,</span><span style="color:#c0c5ce;">&#39;) &gt;&gt;
+        len: parse_usize &gt;&gt;
+        crlf &gt;&gt;
+        (
+            Response::DataAvailable {link_id, len }
+        )
+    )
+);
+</span></code></pre>
+<p>One nice thing about <code>nom</code> is that you can feed data forward within a <code>do_parse!</code>, using the result of <code>parse_usize</code> in another macro such as <code>take!(len)</code>.</p>
+<h1 id="combinators-in-the-tin">Combinators in the tin</h1>
+<p>While we write our own domain-specific combinators, <code>nom</code> ships with a vast array of useful ones beyond the <code>tag!</code>, <code>alt!</code> and <code>complete!</code> that we've seen. 
+Each of these macros can also be replaced with function calls if you have some fancy logic you want to involve in your parsing.</p>
+<p>A short (and incomplete) list of the combinators we've found useful:</p>
+<ul>
+<li><code>alt!</code>: Try a list of parsers and return the result of the first successful one</li>
+<li><code>char!</code>: matches one character: `char!(char) =&gt; &amp;u8 -&gt; IResult&lt;&amp;u8, char&gt;</li>
+<li><code>complete!</code>: replaces a Incomplete returned by the child parser with an Error</li>
+<li><code>do_parse!</code>: 	applies sub parsers in a sequence. it can store intermediary results and make them available for later parsers</li>
+<li><code>opt!</code>: make the underlying parser optional</li>
+<li><code>tag!</code>: declares a byte array as a suite to recognize</li>
+<li><code>take!</code>: generates a parser consuming the specified number of bytes</li>
+</ul>
+<h1 id="supports-no-std">Supports <code>no_std</code></h1>
+<p>Nom works fantastically well, even in a <code>no_std</code> environment. 
+You can't use the regexp combinators without <code>std</code>, but even if you did use regexps, then you'd have two problems.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/nom-parser' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="parser-combinators" href="https://blog.drogue.io/nom-parser/#parser-combinators">Parser Combinators</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="why-we-parse" href="https://blog.drogue.io/nom-parser/#why-we-parse">Why we parse</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="the-parser" href="https://blog.drogue.io/nom-parser/#the-parser">The parser</a>
+                </li>
+                
+                <li>
+                  <a data-for="combining-parsers" href="https://blog.drogue.io/nom-parser/#combining-parsers">Combining parsers</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="more-complex" href="https://blog.drogue.io/nom-parser/#more-complex">More complex</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="combinators-in-the-tin" href="https://blog.drogue.io/nom-parser/#combinators-in-the-tin">Combinators in the tin</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="supports-no-std" href="https://blog.drogue.io/nom-parser/#supports-no-std">Supports no_std</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>More Rust &amp; Async (and hand-rolled PWM) &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Improvements to an async embedded kernel for Rust">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="More Rust &amp; Async (and hand-rolled PWM)" />
+<meta name="twitter:description" content="Improvements to an async embedded kernel for Rust">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="More Rust &amp; Async (and hand-rolled PWM)">
+<meta property="og:url" content="https://blog.drogue.io/more-async-and-pwm">
+<meta property="og:description" content="Improvements to an async embedded kernel for Rust">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">More Rust &amp; Async (and hand-rolled PWM)</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1183">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-15'>15 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;more-async-and-pwm&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>If we start living the async lifestyle, we can potentially get more
+use out of our limited hardware resources.  Maybe not, but it's worth
+exploring. Let's explore.</p>
+<span id="continue-reading"></span><h1 id="embedded-rtos-oses-and-frameworks">Embedded, RTOS, OSes and Frameworks</h1>
+<p>First, let's all agree we're doing embedded work on bare chips, where we
+can pretty freely twiddle any register we want. In the Rust world, this
+would be called <em>bare metal</em> development.</p>
+<p>Take a step upwards, and you've got a framework such as RTIC, which provides
+facilities to make writing functional embedded code easier, while also
+making it easier to organize your code and reason over it.</p>
+<p>A step beyond that would be something like Zephyr, Tock, Drone or another
+RTOS (real-time operating system). RTOSes can be further differentiated into
+&quot;hard&quot; real-time (hey, airbag needs to absolutely fire within 15 nano-seconds
+of impact) or &quot;soft&quot; real-time, which relaxes the timing requirements.</p>
+<p>Beyond that, you get to a more general-purpose OS, which may or may not
+include things like network drivers and other facilities we've come to
+love on our machines running BeOS or OS/2 Warp (or, I guess, Linux).</p>
+<p>In general, all of the above, from an embedded point-of-view, provide basically:</p>
+<ul>
+<li>Ways to run tasks</li>
+<li>Ways to handle interrupts</li>
+<li>Misc useful capabilities used by the above</li>
+</ul>
+<h2 id="an-async-opportunity">An <code>async</code> opportunity</h2>
+<p>I have to admit I'm smitten with <code>async</code> and <code>await</code> on Rust. It just works
+the way my mind does. I also have to admit that I've repeated told my boss
+&quot;no, dude, we're not writing an RTOS&quot; (Hi, Mark). Then again, I also must admit that my
+employer tends to write tools and frameworks for application developers, along
+with OSes, so I don't think I'm coloring too far outside the lines in exploring
+an async-centric embedded kernel.</p>
+<p>Instead of trying to make Linux (or something that feels Linux-like) fit onto
+a small board, what if we built an &quot;OS&quot; (but we're not calling it that) from 
+the foundations based upon a modern and safe language (Rust) using modern and
+efficient idioms (async/reactive)?</p>
+<p>But let's just call it a <em>framework</em>.</p>
+<h1 id="what-would-it-look-like">What would it look like?</h1>
+<p>This week, it looks like the following:</p>
+<h2 id="ways-to-run-tasks">Ways to run tasks</h2>
+<p>We touched on this in the <a href="/rust-and-async/">last blog post</a> I wrote, but it's simply <code>spawn</code>ing
+async Rust tasks, probably containing a loop.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">Kernel::spawn(&quot;</span><span style="color:#a3be8c;">ld2</span><span style="color:#c0c5ce;">&quot;, async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+    </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#65737e;">// do awesome stuff
+    </span><span style="color:#c0c5ce;">}
+});
+</span></code></pre><h2 id="ways-to-handle-interrupts">Ways to handle interrupts</h2>
+<p>Here we venture somewhat outside of the &quot;real-time&quot; aspect of RTOSes, which I think
+is okay, depending on your use-case. Some operating systems attempt to limit the
+work you actually do within an ISR (interrupt service routine), and rather use an
+interrupt to wake up a normal &quot;user-land&quot; task that is blocked waiting for its
+interrupt to fire.</p>
+<p>In my current sketching, I have an API that takes a <em>non async closure</em>, but behind
+the scenes wraps it in an async task with a <em>wait for my interrupt</em> and a loop.</p>
+<h3 id="the-visible-api">The visible API</h3>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">Kernel::interrupt(</span><span style="color:#d08770;">EXTI15_10</span><span style="color:#c0c5ce;">, </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">|| {
+    </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> pc13.</span><span style="color:#96b5b4;">check_interrupt</span><span style="color:#c0c5ce;">() {
+        </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> pc13.</span><span style="color:#96b5b4;">is_low</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">() {
+            log::info!(&quot;</span><span style="color:#a3be8c;">button pushed</span><span style="color:#c0c5ce;">&quot;);
+        } </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+            log::info!(&quot;</span><span style="color:#a3be8c;">button released</span><span style="color:#c0c5ce;">&quot;);
+        }
+        pc13.</span><span style="color:#96b5b4;">clear_interrupt_pending_bit</span><span style="color:#c0c5ce;">();
+    }
+});
+</span></code></pre><h3 id="the-internal-magic">The internal magic</h3>
+<p>It uses the same <code>Kernel::spawn(...)</code> as non-interrupt tasks, along with my
+<code>async</code>-capable <code>interrupt(...)</code> API which provides a <code>Future</code> which satisfies
+when the associated IRQ is pending.</p>
+<p>Then it just calls the passed in closure.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">    </span><span style="color:#b48ead;">pub fn </span><span style="color:#8fa1b3;">interrupt</span><span style="color:#c0c5ce;">&lt;N: Nr + Debug + Copy + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">, F&gt;(</span><span style="color:#bf616a;">irq</span><span style="color:#c0c5ce;">: N, </span><span style="color:#b48ead;">mut </span><span style="color:#bf616a;">isr</span><span style="color:#c0c5ce;">: F) -&gt; Result&lt;(), SpawnError&gt;
+        </span><span style="color:#b48ead;">where</span><span style="color:#c0c5ce;"> F: FnMut() -&gt; () + </span><span style="color:#b48ead;">&#39;static</span><span style="color:#c0c5ce;">,
+    {
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> name = String::&lt;U16&gt;::new();
+        write!(name, &quot;</span><span style="color:#d08770;">{:?}</span><span style="color:#c0c5ce;">&quot;, irq);
+        </span><span style="color:#b48ead;">Self</span><span style="color:#c0c5ce;">::spawn(name.</span><span style="color:#96b5b4;">as_str</span><span style="color:#c0c5ce;">(), async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+            </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+                interrupt::interrupt(irq).await;
+                </span><span style="color:#96b5b4;">isr</span><span style="color:#c0c5ce;">();
+            }
+        }).</span><span style="color:#96b5b4;">map</span><span style="color:#c0c5ce;">(|_| ())
+    }
+</span></code></pre><h1 id="using-the-resources-and-organizing-code">Using the Resources and Organizing Code</h1>
+<p>My example application running on this board uses a single timer to make two LEDs
+&quot;breathe&quot; in a non-synchronized manner. You can absolutely re-create this without
+using <code>async</code> tasks, but you will be managing a shared interrupt across two <em>users</em>
+of that interrupt (the LEDs themselves).</p>
+<p>This is a very contrived example of using a timer to manually create a poor-man's
+PWM output, but it seemed like a useful challenge to attempt.</p>
+<h2 id="quick-aside-pwm">Quick Aside: PWM</h2>
+<p>PWM stands for Pulse-Wave Modulation, which in this case means taking a thing that
+is either strictly <em>on</em> or <em>off</em> (the LED), and flipping it on and off fast enough 
+to appear that it's at 0 to 100% brightness, on a continuum. The human eye will see
+an LED that is on 50% of the time and off 50% of the time as about half as bright
+as a fully-on LED. If we flip the switch fast enough, it looks &quot;dim&quot;, and not flickery.
+(Which, coincidently is why slo-mo video under LEDs looks very blinky blinky).</p>
+<h3 id="end-of-aside">&lt;/End of Aside&gt;</h3>
+<p>Since we're talking about flipping an LED on/off on some sort of regular schedule,
+that's where the timer is involved. Managing one timer and one LED is &quot;easy&quot; for small
+values of &quot;easy&quot;, but using a single timer for multiple LEDs could be more of a challenge
+if you're directly handling the timer's <em>timeout</em> interrupts. So you might be tempted
+to use a timer per LED. Until you run out of timers.</p>
+<p>With <code>async</code>, we can quite easily manage multiple LEDs from a single timer. With
+my exploratory kernel, we don't have to think about interrupts, but rather only
+tasks.</p>
+<p>Don't judge my math, but basically we spawn two tasks that look identical (modulo
+an initial delay), which runs a <code>duty_cycle</code> from 1 to 99 and back, repeatedly.</p>
+<p>At each step, the LED is on for roughly <code>duty_cycle</code> microseconds, and off for <code>100 - duty_cycle</code>
+microseconds. For visual appearances, each time is multiplied by <code>20</code> in this case,
+and we linger on each step for 4 iterations of a loop. Then we adjust <code>duty_cycle</code>
+and do it again, turning around when we reach 99 or 1, back and forth, back and forth.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">    Kernel::spawn(&quot;</span><span style="color:#a3be8c;">ld2</span><span style="color:#c0c5ce;">&quot;, async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> duty_cycle = </span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">;
+        </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> up = </span><span style="color:#d08770;">true</span><span style="color:#c0c5ce;">;
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> dwell = </span><span style="color:#d08770;">4</span><span style="color:#c0c5ce;">;
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> mult = </span><span style="color:#d08770;">20</span><span style="color:#c0c5ce;">;
+
+	</span><span style="color:#65737e;">// the other task does not have this initial 1sec delay
+        </span><span style="color:#c0c5ce;">AsyncTimer::delay_ms( Milliseconds(</span><span style="color:#d08770;">1000</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">)).await;
+
+        </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+            </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">_ in </span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">..dwell {
+                </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> on: </span><span style="color:#b48ead;">u32 </span><span style="color:#c0c5ce;">= (duty_cycle * mult) as </span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">;
+                </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> off: </span><span style="color:#b48ead;">u32 </span><span style="color:#c0c5ce;">= ((</span><span style="color:#d08770;">100 </span><span style="color:#c0c5ce;">- duty_cycle) * mult) as </span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">;
+                ld2.</span><span style="color:#96b5b4;">set_high</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+                AsyncTimer::delay_us(Microseconds(on)).await;
+                ld2.</span><span style="color:#96b5b4;">set_low</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+                AsyncTimer::delay_us(Microseconds(off)).await;
+            }
+
+            </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> duty_cycle == </span><span style="color:#d08770;">99 </span><span style="color:#c0c5ce;">{
+                up = </span><span style="color:#d08770;">false
+            </span><span style="color:#c0c5ce;">} </span><span style="color:#b48ead;">else if</span><span style="color:#c0c5ce;"> duty_cycle == </span><span style="color:#d08770;">1 </span><span style="color:#c0c5ce;">{
+                up = </span><span style="color:#d08770;">true</span><span style="color:#c0c5ce;">;
+            }
+
+            </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> up {
+                duty_cycle += </span><span style="color:#d08770;">1
+            </span><span style="color:#c0c5ce;">} </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+                duty_cycle -= </span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">;
+            }
+        }
+    });
+</span></code></pre><div class="video >">
+  <iframe style="height: 480px; width: 100%;" frameborder="0" src="//player.vimeo.com/video/491304511" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+</div>
+<p>As many tasks as we like can conceivably use the singular <code>AsyncTimer</code> which
+is currently linked to exactly one timer (<code>TIM15</code> here). Each task
+only has to focus on the logic of waiting, turning on, waiting, turning off,
+and can ignore the fact that <code>TIM15</code> interrupts are firing.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>I like where this is going. I think the next steps might be to help isolate
+a task's state into an <em>actor</em> framework using <code>async</code>, and providing a
+message-passing way for them to safely communicate.</p>
+<p>Plus, I got to try out my new desktop tripod for phone videos. So that's a win.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/more-async-and-pwm' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="embedded-rtos-oses-and-frameworks" href="https://blog.drogue.io/more-async-and-pwm/#embedded-rtos-oses-and-frameworks">Embedded, RTOS, OSes and Frameworks</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="an-async-opportunity" href="https://blog.drogue.io/more-async-and-pwm/#an-async-opportunity">An async opportunity</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="what-would-it-look-like" href="https://blog.drogue.io/more-async-and-pwm/#what-would-it-look-like">What would it look like?</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="ways-to-run-tasks" href="https://blog.drogue.io/more-async-and-pwm/#ways-to-run-tasks">Ways to run tasks</a>
+                </li>
+                
+                <li>
+                  <a data-for="ways-to-handle-interrupts" href="https://blog.drogue.io/more-async-and-pwm/#ways-to-handle-interrupts">Ways to handle interrupts</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="using-the-resources-and-organizing-code" href="https://blog.drogue.io/more-async-and-pwm/#using-the-resources-and-organizing-code">Using the Resources and Organizing Code</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="quick-aside-pwm" href="https://blog.drogue.io/more-async-and-pwm/#quick-aside-pwm">Quick Aside: PWM</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="conclusion" href="https://blog.drogue.io/more-async-and-pwm/#conclusion">Conclusion</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>eS-WiFi and SPI &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="There&#x27;s a lot of variety in the embedded world. 
+While we&#x27;ve implemented the ESP8266 WiFi-offload board over USART last time, now we&#x27;re doing the Inventek eS-WiFi over the SPI bus.
+Let&#x27;s explore some of the differences.
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="eS-WiFi and SPI" />
+<meta name="twitter:description" content="There&#x27;s a lot of variety in the embedded world. 
+While we&#x27;ve implemented the ESP8266 WiFi-offload board over USART last time, now we&#x27;re doing the Inventek eS-WiFi over the SPI bus.
+Let&#x27;s explore some of the differences.
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="eS-WiFi and SPI">
+<meta property="og:url" content="https://blog.drogue.io/eswifi">
+<meta property="og:description" content="There&#x27;s a lot of variety in the embedded world. 
+While we&#x27;ve implemented the ESP8266 WiFi-offload board over USART last time, now we&#x27;re doing the Inventek eS-WiFi over the SPI bus.
+Let&#x27;s explore some of the differences.
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">eS-WiFi and SPI</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1120">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-12'>12 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;eswifi&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>There's a lot of variety in the embedded world. 
+While we've implemented the <a href="/wifi-offload/">ESP8266 WiFi-offload board over USART</a> last time, now we're doing the <a href="https://www.digikey.com/en/products/detail/inventek-systems/ISM43362-M3G-L44-E-C6-2-1-8/7070042">Inventek eS-WiFi</a> over the SPI bus.
+Let's explore some of the differences.</p>
+<span id="continue-reading"></span><h1 id="es-wifi">eS-WiFi</h1>
+<p>The reason we're addressing this WiFi-offload board is because it's what ships on the STM <a href="https://www.digikey.com/en/product-highlight/s/stmicroelectronics/b-l4s5i-iot01a-discovery-kit-for-iot-node">B-L4S5I-IOT01A board</a>.
+Radio-related peripherals are often sold as complete units and soldered onto another board, instead of built natively onto the main board from components.
+This assists with certifications from the FCC and other bodies that care about the signals you're emitting.</p>
+<p><img src="/images/eswifi.jpg" alt="The board" /></p>
+<p>As with the ESP8266, it ostensibly uses Hayes AT commands to communicate.
+Unlike the ESP8266, the eS-WiFi, at least when mounted by STM onto this devboard, uses SPI as it's interface.</p>
+<h1 id="spi">SPI</h1>
+<p>SPI is a unique little beast. 
+It's a bus, which allows multiple peripherals to be attached at a time.
+You may see abbreviations such as <em>MISO</em> and <em>MOSI</em>, but given <a href="https://hackaday.com/2020/06/29/updating-the-language-of-spi-pin-labels-to-remove-casual-references-to-slavery/">sensitivity of the underlying words and how they affect others</a>, we're moving to using <em>CIPO</em> and <em>COPI</em>.</p>
+<p><em>CIPO</em> stands for <em>Controller In, Peripheral Out</em>, which <em>COPI</em> stands for <em>Controller Out, Peripheral In</em>.</p>
+<p>Two wires; one heads each direction.</p>
+<p>Additionally, there's a <em>SCK</em> wire, which provides a clock (driven by the <em>controller</em>), so there is no need to agree a-priori on the communication speed.
+(This assumes the peripheral can keep up with the speed set by the controller).
+Compare to USARTs, where both sides have to agree, out-of-band, on the baudrate, etc.</p>
+<p>With multiple peripherals on the bus, the way each peripheral is given a chance to talk to the controller is through a <em>chip select</em> (CS) pin.
+In general, the controller dedicates one pin per peripheral. These pins are <em>active low</em>, so that to signal a chip is <em>selected</em>, the pin should be brought down to ground.
+This also means you need either an internal or external <em>pull-up resistor</em> so that when the peripheral is not selected, it's seeing a positive voltage on its end of the CS wire.</p>
+<p>Given that there are two roles (controller and peripheral), this indicates that any communication that occurs is at the behest and control of the controller, hence it's name and role.
+Periphals cannot just random start transmitting. 
+The controller will lower a given a peripheral's CS pin to signal that communications is desired with it.</p>
+<p>And then things get weird.</p>
+<p>Even when selected, the peripheral doesn't drive the clock (SCK), so it <em>still</em> can't communicate.</p>
+<p>Instead, the bus works with simultaneous bi-direction communication, driven by the controller.
+For every byte the controller sends, the peripheral sends a byte.
+Of course, on the face of it, this makes it seem like the controller and peripheral both shout at each other for the same amount of time.</p>
+<p>In reality, the controller may communicate something (like a request) to the peripheral, and ignore the <em>junk</em> that the peripheral is shouting back at the same time.
+Then, in order to receive a response that includes useful content, the controller will continue to send additional <em>junk</em> to the peripheral (which it ignores) so that it can swap bytes back to the controller.
+This is sometimes referred to &quot;clocking out bytes&quot;. The bytes sent by the control in this mode are pretty meaningless, other than defining the clock pulses that the peripheral can use to return data.</p>
+<p>How does the controller know how much junk to send to give the peripheral a chance to fully reply?</p>
+<p>In some cases, the on-the-wire protocol may define, thought a reference document, how many bytes to expect. Or the protocol may involve some number of bytes which encode a length of the remainder of the payload.
+In the case of the eS-WiFi board, there <em>yet another pin</em>, <strong>the <em>ready</em> pin</strong>, which is controlled by the peripheral.
+As long as the peripheral keeps that pin high, the controller continues to transmit junk, and gather the response bytes from the peripheral.
+Once that pin goes low, the controller can stop pumping out junk bytes and know it has the entire response.</p>
+<h2 id="word-up">Word up.</h2>
+<p>The HAL for the STM32L4 implements a 8-bit-word-based SPI interface.
+The eS-WiFi board uses 16-bit words (or roughly... 2 bytes).</p>
+<p>Unfortunately, a 16-bit word is not exactly a straight-line array of two 8-bit bytes.</p>
+<h3 id="reading-bytes">Reading bytes</h3>
+<p>The eS-Wifi communication involves swapping bytes, if you read in two 8-bit bytes in at a time.
+And to read bytes, you have to transmit <em>junk</em>, but in this case, very specific junk: newline bytes.</p>
+<p>Here, we transmit 2 newlines, and the SPI will replace those two characters with two bytes of the peripheral's response (which it actually sent as a single 16-bit word):</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> xfer: [</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">2</span><span style="color:#c0c5ce;">] = [</span><span style="color:#d08770;">0x0A</span><span style="color:#c0c5ce;">, </span><span style="color:#d08770;">0x0A</span><span style="color:#c0c5ce;">];
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.spi.</span><span style="color:#96b5b4;">transfer</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> xfer);
+</span></code></pre>
+<p>Given the 8-vs-16 bit wordsize and byte-swapping, we have to read the array backwards.
+The data should be interpreted in this order:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> buffer: [</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">;</span><span style="color:#d08770;">2 </span><span style="color:#c0c5ce;">] = [ xfer[</span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">], xfer[</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">] ]
+</span></code></pre>
+<p>If, by chance, we were working with larger arrays of transfers, we'd have to read each pairwise set of bytes in swapped order.<br />
+In an 8-array, we'd have to interpret the data using indices: <code>1</code> <code>0</code> <code>3</code> <code>2</code> <code>5</code> <code>4</code> <code>7</code> and then <code>6</code>.</p>
+<p>The eS-WiFi will also send an 0x15 (nak) if it doesn't want to transmit an even number of bytes, as padding.</p>
+<h3 id="writing-bytes">Writing bytes</h3>
+<p>Just as with reading, the controller has to deal with byte-swapping and padding, but in this case, we must pad with 0x0A (newline) if we don't have an even number of bytes.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">for</span><span style="color:#c0c5ce;"> chunk in command.</span><span style="color:#96b5b4;">chunks</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">2</span><span style="color:#c0c5ce;">) {
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> xfer: [</span><span style="color:#b48ead;">u8</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">2</span><span style="color:#c0c5ce;">] = [</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">; </span><span style="color:#d08770;">2</span><span style="color:#c0c5ce;">];
+    xfer[</span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">] = chunk[</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">];
+    </span><span style="color:#b48ead;">if</span><span style="color:#c0c5ce;"> chunk.</span><span style="color:#96b5b4;">len</span><span style="color:#c0c5ce;">() == </span><span style="color:#d08770;">2 </span><span style="color:#c0c5ce;">{
+        xfer[</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">] = chunk[</span><span style="color:#d08770;">1</span><span style="color:#c0c5ce;">]
+    } </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+        xfer[</span><span style="color:#d08770;">0</span><span style="color:#c0c5ce;">] = </span><span style="color:#d08770;">0x0A
+    </span><span style="color:#c0c5ce;">}
+
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> result = </span><span style="color:#bf616a;">self</span><span style="color:#c0c5ce;">.spi.</span><span style="color:#96b5b4;">transfer</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> xfer);
+
+    ...
+}
+</span></code></pre>
+<p>Effectively, if we wanted to transmit <code>['b', 'o', 'b']</code>, we would have to transmit two 2-byte arrays shaped like:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">[ &#39;</span><span style="color:#a3be8c;">o</span><span style="color:#c0c5ce;">&#39;, &#39;</span><span style="color:#a3be8c;">b</span><span style="color:#c0c5ce;">&#39; ]
+[ &#39;</span><span style="color:#96b5b4;">\n</span><span style="color:#c0c5ce;">&#39;, &#39;</span><span style="color:#a3be8c;">b</span><span style="color:#c0c5ce;">&#39; ]
+</span></code></pre>
+<p>Or as a 4-array: [ 'o', 'b', '\n', 'b']</p>
+<p>Fun, yeah?</p>
+<h1 id="but-now-you-can-tcp">But now you can TCP</h1>
+<p>Of course, all of this gets hidden, as it's implementation details for the driver.</p>
+<p>See the <a href="https://crates.io/crates/drogue-es-wifi">drogue-es-wifi</a> crate's README for details on how to use it to actually do some TCP connections.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/eswifi' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="es-wifi" href="https://blog.drogue.io/eswifi/#es-wifi">eS-WiFi</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="spi" href="https://blog.drogue.io/eswifi/#spi">SPI</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="word-up" href="https://blog.drogue.io/eswifi/#word-up">Word up.</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="but-now-you-can-tcp" href="https://blog.drogue.io/eswifi/#but-now-you-can-tcp">But now you can TCP</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

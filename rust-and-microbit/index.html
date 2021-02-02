@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Rust on the BBC micro:bit &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Rust on the BBC micro:bit" />
+<meta name="twitter:description" content="The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Rust on the BBC micro:bit">
+<meta property="og:url" content="https://blog.drogue.io/rust-and-microbit">
+<meta property="og:description" content="The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Rust on the BBC micro:bit</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1533">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-10'>10 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-microbit&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud!</p>
+<span id="continue-reading"></span>
+<p>Version 1.x of the kit features a nRF51822 micro-controller, a motion sensor, accelerometer, and a 5x5 LED matrix. The recently released v2.0 upgrades the micro-controller to an nRF52833, which gives twice the flash and the RAM in addition to a speaker and microphone.</p>
+<p>In this post, you will see how to get started using Rust on the micro:bit. We'll expose the on-chip thermometer as a Bluetooth Environment Sensing Service, and write a small application (in rust, duh), that polls the sensor for data and publishes it to the Drogue Cloud via a Bluetooth gateway.</p>
+<p>The micro:bit does not have a lot of RAM (only 16k!), so we won't be doing any fancy encryption just yet.</p>
+<img src="microbit.png" style="width:350px; float: left; margin-right: 20px;" alt="microbit" />
+<h2 id="the-micro-controller">The micro-controller</h2>
+<p>The nRF family of microcontrollers are generally built for 2.4 GHz low power radio, such as <a href="https://en.wikipedia.org/wiki/Bluetooth_Low_Energy">Bluetooth Low Energy (BLE)</a>, <a href="https://en.wikipedia.org/wiki/IEEE_802.15.4">ZigBee/802.15.4</a> and some proprietary protocols.</p>
+<p>Unlike some other BLE chips, the nRF 51 and 52 families used in the micro:bit runs the BLE stack alongside the application code in different parts of memory. Nordic Semiconductor (the company making the nRF) provides a proprietary firmware with the BLE implementation that you can use. However, you are also free to use that memory for something else, or provide your own BLE stack (and that is what we will do in this blog post). The advantage of this design is power saving since there is less active circuitry needed to operate the microcontroller. THe disadvantage is that you have to deal with flashing the BLE firmware as well and have to use an in-memory interface for communicating with the BLE controller.</p>
+<p>Bluetooth Low Energy is a wireless network technology aimed at low-power applications. The advantage is that devices can operate on coin cell batteries for a long time while still providing some functionality. The BLE standard is huge, and is a bit special in that it covers a lot of what one would consider the 'application layer' standards such as standard formats for thermometers, heart rate monitors, audio and more. The advantage is that BLE-compatible software can work with BLE-compatible hardware from multiple vendors.</p>
+<h2 id="rust-and-ble">Rust and BLE</h2>
+<p>For BLE on nRF using Rust, there are two options:</p>
+<ul>
+<li>Use the <a href="https://github.com/akiles/nrf-softdevice">rust bindings</a> for the nRF firmware.</li>
+<li>The <a href="https://github.com/jonas-schievink/rubble">rubble</a> project, which is an open source pure rust implementation of the BLE standard. It's important to note that the rubble stack has not gone through the Bluetooth Qualification Process, so you cannot make bluetooth-based products with it at present.</li>
+</ul>
+<p>In this post, we'll use rubble, because open source is the one true way.</p>
+<h2 id="connecting-to-the-cloud">Connecting to the cloud</h2>
+<p>To connect BLE devices to the cloud, some sort of gateway software is needed. There are alternatives like <a href="https://www.eclipse.org/kura/">Eclipse Kura</a> that provides a lot of functionality.</p>
+<p>We'll use a proof of concept <a href="https://github.com/drogue-iot/drogue-bluetooth-gateway">drogue-bluetooth-gateway</a>, which should work out of the box on most Linux distributions. The idea is that this can run on a gateway device like Raspberry PI and forward data to the cloud. The gateway talks to the bluetooth daemon (BlueZ) using DBus, and needs to run as a priviledged container.</p>
+<p>To deploy the cloud, have a look at <a href="https://blog.drogue.io/the-cloud-side-of-things/">drogue-cloud</a> which you can run locally on <a href="https://blog.drogue.io/minikube-roundtrip/">minikube</a>.</p>
+<h2 id="the-code">The code</h2>
+<p>The example used in this blog post can be found at the <a href="https://github.com/drogue-iot/drogue-microbit/tree/main/examples/ble-thermometer">drogue-microbit</a> repository. This repository contains some libraries and example applications for the micro:bit based on the <a href="https://github.com/nrf-hal/nrf-hal">nrf-hal</a>. An alternative crate to use is the <a href="https://crates.io/crates/microbit">microbit</a> crate, which re-exports on nrf-hal + some libraries.</p>
+<p>The example uses <a href="https://rtic.rs">RTIC</a>, which provides a useful abstraction for writing embedded rust application.</p>
+<h3 id="configuring-the-ble-stack">Configuring the BLE stack</h3>
+<p>Rubble needs to be configured with:</p>
+<ul>
+<li>An implementation of a Transmitter trait. Rubble comes with a BleRadio type that consumes the radio device as well as TX/RX packet buffers.</li>
+<li>A timer that is used to drive the link layer state. The micro:bit features a timer that we can use for this purpose.</li>
+<li>A set of buffers and queues which is used to pass data between the radio, link layer and attribute protocol.</li>
+<li>A BLE channel mapper that exposes attributes that map to the GATT service we're implementing.</li>
+</ul>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">pub enum </span><span style="color:#c0c5ce;">AppConfig {}
+</span><span style="color:#b48ead;">impl </span><span style="color:#c0c5ce;">Config </span><span style="color:#b48ead;">for </span><span style="color:#c0c5ce;">AppConfig {
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Timer = BleTimer&lt;hal::pac::TIMER0&gt;;
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">Transmitter = BleRadio;
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">ChannelMapper = BleChannelMap&lt;EnvironmentSensingService, NoSecurity&gt;;
+    </span><span style="color:#b48ead;">type </span><span style="color:#c0c5ce;">PacketQueue = &amp;</span><span style="color:#b48ead;">&#39;static mut</span><span style="color:#c0c5ce;"> SimpleQueue;
+}
+</span></code></pre>
+<p>The BLE service that most closely matches our use case is the Environment Sensing Service, so we'll use that. It allows exposing different types of environment data such as temperature, humiditiy along with some metadata. In theory, an application relying on this standard can be interoperable with any device implementing this service.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ess: EnvironmentSensingService = EnvironmentSensingService::new();
+
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> ble_r = Responder::new(tx, rx, L2CAPState::new(BleChannelMap::with_attributes(ess)));
+</span></code></pre>
+<p>In order for a BLE device to be known to the world, it must advertise its existence. It does so by broadcasting advertisements, so that those interested can discover it. The broadcast is done at regular intervals, usually called the advertisement interval. In the example application it's set to 100 milliseconds, which makes it pretty easy to discover. The advertisement also contains some metadata about the broadcaster, in our case a name of the device along with the UUIDs corresponding to the service that the device supports.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> next_update = ble_ll.</span><span style="color:#96b5b4;">start_advertise</span><span style="color:#c0c5ce;">(
+        Duration::from_millis(</span><span style="color:#d08770;">100</span><span style="color:#c0c5ce;">),
+        &amp;[
+            AdStructure::CompleteLocalName(&quot;</span><span style="color:#a3be8c;">Drogue IoT micro:bit</span><span style="color:#c0c5ce;">&quot;),
+            AdStructure::ServiceUuids16(ServiceUuids::from_uuids(</span><span style="color:#d08770;">true</span><span style="color:#c0c5ce;">, &amp;[</span><span style="color:#d08770;">ESS_UUID</span><span style="color:#c0c5ce;">])),
+        ],
+        &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> radio,
+        tx_cons,
+        rx_prod,
+    )
+    .</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+ble_ll.</span><span style="color:#96b5b4;">timer</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">configure_interrupt</span><span style="color:#c0c5ce;">(next_update);
+</span></code></pre>
+<p>Rubble needs to act on RADIO interrupts to handle received data.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(binds = RADIO, resources = [radio, ble_ll], spawn = [ble_worker], priority = 3)]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">radio</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: radio::Context) {
+    ...
+}
+</span></code></pre>
+<p>It also requires to ensure that connection events can be processed at regular intervals.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(binds = TIMER0, resources = [radio, ble_ll], spawn = [ble_worker], priority = 3)]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">timer0</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: timer0::Context) {
+    ...
+}
+</span></code></pre>
+<p>Both of these spawn another task which does all the work:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">while</span><span style="color:#c0c5ce;"> ble_r.</span><span style="color:#96b5b4;">has_work</span><span style="color:#c0c5ce;">() {
+    ble_r.</span><span style="color:#96b5b4;">process_one</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+}
+</span></code></pre>
+<p>This can in theory run in the idle loop as well, but this way it is only run when needed (via radio or timer interrupts).</p>
+<h3 id="measuring-the-temperature">Measuring the temperature</h3>
+<p>To avoid conflict with the RADIO and TIMER0 interrupts, a Real Time Counter (RTC) is used to periodically measure the temperature
+and update the temperature state of the environment sensing service. The temperature is measured by first starting the measurement, then waiting for a while to
+make sure the value is stable, then reading the value and stopping the measurement.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">(binds = RTC0, resources = [rtc, thermometer, timer_count, ble_r], priority = 1)]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">rtc0</span><span style="color:#c0c5ce;">(</span><span style="color:#bf616a;">ctx</span><span style="color:#c0c5ce;">: rtc0::Context) {
+
+    ...
+
+    </span><span style="color:#b48ead;">if </span><span style="color:#c0c5ce;">*timer_count % </span><span style="color:#d08770;">2 </span><span style="color:#c0c5ce;">== </span><span style="color:#d08770;">0 </span><span style="color:#c0c5ce;">{
+        thermometer.</span><span style="color:#96b5b4;">start_measurement</span><span style="color:#c0c5ce;">();
+    } </span><span style="color:#b48ead;">else </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> value = thermometer.</span><span style="color:#96b5b4;">read</span><span style="color:#c0c5ce;">();
+        value.</span><span style="color:#96b5b4;">map_or_else</span><span style="color:#c0c5ce;">(
+        |_| {},
+        |</span><span style="color:#bf616a;">value</span><span style="color:#c0c5ce;">| {
+                </span><span style="color:#65737e;">// Our calibration shows that it is off by 4 degrees...
+                </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> f = value.to_num::&lt;</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">&gt;() - </span><span style="color:#d08770;">4</span><span style="color:#c0c5ce;">;
+                ble_r.</span><span style="color:#96b5b4;">lock</span><span style="color:#c0c5ce;">(|</span><span style="color:#bf616a;">ble_r</span><span style="color:#c0c5ce;">| {
+                    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> l2cap = &amp;</span><span style="color:#b48ead;">mut </span><span style="color:#c0c5ce;">*(ble_r.</span><span style="color:#96b5b4;">l2cap</span><span style="color:#c0c5ce;">());
+                    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> provider: &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> EnvironmentSensingService =
+                        l2cap.</span><span style="color:#96b5b4;">channel_mapper</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">attribute_provider</span><span style="color:#c0c5ce;">();
+                    provider.</span><span style="color:#96b5b4;">set_temperature</span><span style="color:#c0c5ce;">(f);
+                });
+            },
+        );
+        thermometer.</span><span style="color:#96b5b4;">stop_measurement</span><span style="color:#c0c5ce;">();
+    }
+}
+</span></code></pre><h2 id="running-the-application">Running the application</h2>
+<p>If you've connected the micro:bit to your PC, you can flash your device using <code>cargo embed --release</code>. This will start up a console printing log messages from the firmware:</p>
+<p><img src="https://blog.drogue.io/rust-and-microbit/console.png" alt="Flashing" /></p>
+<h2 id="connecting-and-reading-the-data">Connecting and reading the data</h2>
+<p>To run the gateway, you need to have <code>podman</code> or <code>docker</code> installed. You can run the gateway using a prebuilt container image:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">docker run --privileged --volume /run/dbus/system_bus_socket:/run/dbus/system_bus_socket --net=host -e RUST_LOG=info -e DROGUE_HTTP_ENDPOINT=http://http-endpoint.drogue-iot.172.18.0.2.nip.io:30394 -e DROGUE_USERNAME=ble_gw -e DROGUE_PASSWORD=foobar -e BLUETOOTH_DEVICE=B9:64:39:0E:8E:DF -ti quay.io/lulf/drogue-bluetooth-gateway:latest
+</span></code></pre>
+<p>You can find the address in the console output from the device. The gateway should be able to connect to your device and publish data to the cloud:</p>
+<p><img src="https://blog.drogue.io/rust-and-microbit/gw_output.png" alt="Console" /></p>
+<p>If the gateway is able to connect to your device, we can see some output in the drogue console:</p>
+<p><img src="https://blog.drogue.io/rust-and-microbit/drogue_console.png" alt="Console" /></p>
+<p>And thats it! </p>
+<h2 id="whats-next">Whats next</h2>
+<p>We've seen how you can develop open source BLE applications in rust on the BBC micro:bit and sending telemetry data to the cloud via a BLE gateway. However, we have only scratched the surface of what you can do with it There are more interesting sensors on the micro:bit to play with, like the motion sensor and the mic/speaker on the v2.</p>
+<p>The rubble stack is not completely reliable, and difficulties connecting to the device and disconnects does occur. Working out the root cause for these issues would improve the relability of the example.</p>
+<p>There are several alternatives to use as BLE gateways, such as Eclipse Kura that it could be interesting to try. It would also be nice to have support for <a href="https://en.wikipedia.org/wiki/6LoWPAN">6LoWPAN</a> in rubble, so that BLE devices can be directly connected using IPv6.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/rust-and-microbit' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="the-micro-controller" href="https://blog.drogue.io/rust-and-microbit/#the-micro-controller">The micro-controller</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="rust-and-ble" href="https://blog.drogue.io/rust-and-microbit/#rust-and-ble">Rust and BLE</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="connecting-to-the-cloud" href="https://blog.drogue.io/rust-and-microbit/#connecting-to-the-cloud">Connecting to the cloud</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="the-code" href="https://blog.drogue.io/rust-and-microbit/#the-code">The code</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="configuring-the-ble-stack" href="https://blog.drogue.io/rust-and-microbit/#configuring-the-ble-stack">Configuring the BLE stack</a>
+                </li>
+                
+                <li>
+                  <a data-for="measuring-the-temperature" href="https://blog.drogue.io/rust-and-microbit/#measuring-the-temperature">Measuring the temperature</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="running-the-application" href="https://blog.drogue.io/rust-and-microbit/#running-the-application">Running the application</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="connecting-and-reading-the-data" href="https://blog.drogue.io/rust-and-microbit/#connecting-and-reading-the-data">Connecting and reading the data</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="whats-next" href="https://blog.drogue.io/rust-and-microbit/#whats-next">Whats next</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

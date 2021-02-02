@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Rust and Async (on embedded devices) &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="async&#x2F;await is available for embedded devices, let&#x27;s explore">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Rust and Async (on embedded devices)" />
+<meta name="twitter:description" content="async&#x2F;await is available for embedded devices, let&#x27;s explore">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Rust and Async (on embedded devices)">
+<meta property="og:url" content="https://blog.drogue.io/rust-and-async">
+<meta property="og:description" content="async&#x2F;await is available for embedded devices, let&#x27;s explore">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Rust and Async (on embedded devices)</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1410">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-09'> 9 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-async&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p><code>async</code>/<code>await</code> within Rust is a convenient way to gain parallelism,
+even on an embedded device where we ostensibly have exactly one userland
+thread by default.</p>
+<span id="continue-reading"></span><h1 id="threads-and-async-await">Threads and <code>async</code>/<code>await</code></h1>
+<h2 id="first-threads">First, threads...</h2>
+<p>While living the larger laptop/server CPU lifestyle, we've grown acustomed
+to having threads. Lots of threads. Each thread generally provides the illusion
+of a straight-line execution of code that owns the entire processor. 
+As some books describe it, from the thread's point-of-view, the whole processor
+is theirs, just sometimes (while other threads are running), it's just a very
+slow processor.</p>
+<p>To accomplish this magic of appearing to own the entire processor, threads
+also have to actually give each thread it's own space for it's stack 
+to grow. Additionally, the kernel has to occasionally freeze one thread, swap
+out that thread's stack for another waiting thread's, and then unfreeze the other 
+thread to run for a bit. This is <em>context switching</em>.</p>
+<p>The same thing happens when running multiple processes instead of just threads,
+but then the heap and the memory-manager gets involved, so that each process has
+its own supposedly unlimited memory address space.</p>
+<p>This is all great (aside from race conditions), but also quite heavy for achieving
+parallelism on a small $2 MCU that is already running its tail off to blink some LEDs
+in a timely manner.</p>
+<h2 id="now-async">Now, async...</h2>
+<p>With Rust (and several other languages), there's the idea of <code>async</code> and <code>await</code>,
+which ultimately represent a way to deal with <em>cooperative</em> multi-tasking, instead
+of <em>preemptive</em> as defined by modern threads and processes.</p>
+<p>To live the <code>async</code> lifestyle with Rust, you first must mark your function or method as
+<code>async</code>. Unfortunately, you can now no longer call this method from code that isn't 
+also async. And simply marking your function as <code>async</code> really accomplishes very little.</p>
+<p>But once you're in an async context (getting into one, we'll address shortly), you can 
+call other async functions, and here's where the magic happens. Calling an async function 
+will not return the result you're asking for. Great? Great! Instead, it signals you'd like 
+that function to go off, and do whatever it needs to do, and you'll check back later when 
+you need to know the answer.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">async </span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">foo</span><span style="color:#c0c5ce;">() {
+  </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> not_the_result = </span><span style="color:#96b5b4;">bar</span><span style="color:#c0c5ce;">();
+  </span><span style="color:#65737e;">// bar is possibly chugging away doing work, maybe, kinda
+
+  </span><span style="color:#c0c5ce;">... lots of other stuff ...
+
+  </span><span style="color:#65737e;">// NOW we care if bar() has completed, and will do nothing
+  // else until it does.
+  </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> actually_the_result = not_the_result.await;
+}
+</span></code></pre>
+<p>Ultimately, an <code>async</code> function returns a <em>future</em> that will, from your caller's
+point-of-view, <em>block</em> when you <code>.await</code> until it's satisfied. </p>
+<p>The awesomeness: it's not <em>really</em> blocking, in terms of blocking the single MCU
+processor from <em>doing other stuff</em>. Which is where the real power lies.</p>
+<h1 id="is-it-async-turtles-all-the-way-down">Is it async turtles all the way down?</h1>
+<p>As noted above, you can only call an async function from within an already async context.
+How do you get into an async context to start? </p>
+<h2 id="executors">Executors</h2>
+<p>An <em>executor</em> is a bit of code that can take an async block as an argument, and <em>spawn</em> it
+into an async context where the magic can then happen. The Rust ecosystem has a few executors,
+and the embedded Rust ecosystem has a few also. The executor API is pretty much left to the
+implementation, so read the docs of whichever you choose.</p>
+<h1 id="why-is-this-good-for-embedded">Why is this good for embedded?</h1>
+<p>We generally have a single core, underpowered little processor without a memory-management
+unit. We also prefer to statically allocate as much as we can, without over-allocating
+memory &quot;just in case&quot; because sometimes we're only rocking 48kb to play with. While
+you can certainly implement preemptive threading on an MCU, you would then have to estimate
+and reserve stack space per thread, possibly over/under-allocating.</p>
+<p>With some strategies, you can precisely allocate memory with async tasks and deterministically
+know you won't inadvertantly OOM. If you spawn new tasks willy-nilly, then of course you can
+still exhaust your executor's memory pool, but that can be controllable and isolated to
+just the executor, not corrupting your entire memory space.</p>
+<h1 id="let-s-see-an-example">Let's see an example</h1>
+<p>I have some proof-of-concept code deep within a secure arctic bunker that I hope to clean up 
+and publish shortly, but here's an example of... what else... <em>blinky</em>, using <code>async</code> and <code>await</code>.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#c0c5ce;">#[</span><span style="color:#bf616a;">entry</span><span style="color:#c0c5ce;">]
+</span><span style="color:#b48ead;">fn </span><span style="color:#8fa1b3;">main</span><span style="color:#c0c5ce;">() -&gt; ! {
+    rtt_init_print!();
+    log::set_logger(&amp;</span><span style="color:#d08770;">LOGGER</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+    log::set_max_level(log::LevelFilter::Debug);
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> device = Peripherals::take().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+
+    log::info!(&quot;</span><span style="color:#a3be8c;">initializing</span><span style="color:#c0c5ce;">&quot;);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> flash = device.</span><span style="color:#d08770;">FLASH</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">();
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> rcc = device.</span><span style="color:#d08770;">RCC</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">();
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> pwr = device.</span><span style="color:#d08770;">PWR</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">constrain</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb1r1);
+    </span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> clocks = rcc
+        .cfgr
+        .</span><span style="color:#96b5b4;">sysclk</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">pclk1</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">pclk2</span><span style="color:#c0c5ce;">(</span><span style="color:#d08770;">80.</span><span style="color:#96b5b4;">mhz</span><span style="color:#c0c5ce;">())
+        .</span><span style="color:#96b5b4;">freeze</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> flash.acr, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> pwr);
+
+    init_executor!( </span><span style="color:#d08770;">1024 </span><span style="color:#c0c5ce;">);
+
+    </span><span style="color:#65737e;">// NOTE: This is *not* the HAL Timer
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> tim15 = </span><span style="color:#b48ead;">crate</span><span style="color:#c0c5ce;">::timer::Timer::tim15(device.</span><span style="color:#d08770;">TIM15</span><span style="color:#c0c5ce;">, clocks, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.apb2);
+
+    </span><span style="color:#65737e;">// NOTE: Since this is *not* the HAL timer, I have to color
+    //       outside the lines to enable/reset the apb2
+    </span><span style="color:#b48ead;">unsafe </span><span style="color:#c0c5ce;">{
+        (&amp;(*</span><span style="color:#d08770;">RCC</span><span style="color:#c0c5ce;">::ptr()).apb2enr).</span><span style="color:#96b5b4;">modify</span><span style="color:#c0c5ce;">(|_,</span><span style="color:#bf616a;">w</span><span style="color:#c0c5ce;">| w.</span><span style="color:#96b5b4;">tim15en</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">set_bit</span><span style="color:#c0c5ce;">());
+        (&amp;(*</span><span style="color:#d08770;">RCC</span><span style="color:#c0c5ce;">::ptr()).apb2rstr).</span><span style="color:#96b5b4;">modify</span><span style="color:#c0c5ce;">(|_,</span><span style="color:#bf616a;">w</span><span style="color:#c0c5ce;">| w.</span><span style="color:#96b5b4;">tim15rst</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">set_bit</span><span style="color:#c0c5ce;">());
+        (&amp;(*</span><span style="color:#d08770;">RCC</span><span style="color:#c0c5ce;">::ptr()).apb2rstr).</span><span style="color:#96b5b4;">modify</span><span style="color:#c0c5ce;">(|_,</span><span style="color:#bf616a;">w</span><span style="color:#c0c5ce;">| w.</span><span style="color:#96b5b4;">tim15rst</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">clear_bit</span><span style="color:#c0c5ce;">());
+    }
+
+    AsyncTimer::initialize(tim15);
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpioa = device.</span><span style="color:#d08770;">GPIOA</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> ld1 = gpioa
+        .pa5
+        .</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioa.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpioa.otyper);
+
+    </span><span style="color:#96b5b4;">spawn</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">ld1</span><span style="color:#c0c5ce;">&quot;, async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+            ld1.</span><span style="color:#96b5b4;">set_high</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+            AsyncTimer::delay(Milliseconds(</span><span style="color:#d08770;">1000</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">)).await;
+            ld1.</span><span style="color:#96b5b4;">set_low</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+            AsyncTimer::delay(Milliseconds(</span><span style="color:#d08770;">1000</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">)).await;
+        }
+    });
+
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> gpiob = device.</span><span style="color:#d08770;">GPIOB</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> rcc.ahb2);
+    </span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> ld2 = gpiob
+        .pb14
+        .</span><span style="color:#96b5b4;">into_push_pull_output</span><span style="color:#c0c5ce;">(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpiob.moder, &amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> gpiob.otyper);
+
+    </span><span style="color:#96b5b4;">spawn</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">ld2</span><span style="color:#c0c5ce;">&quot;, async </span><span style="color:#b48ead;">move </span><span style="color:#c0c5ce;">{
+        </span><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+            ld2.</span><span style="color:#96b5b4;">set_high</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+            AsyncTimer::delay(Milliseconds(</span><span style="color:#d08770;">500</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">)).await;
+            ld2.</span><span style="color:#96b5b4;">set_low</span><span style="color:#c0c5ce;">().</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">();
+            AsyncTimer::delay(Milliseconds(</span><span style="color:#d08770;">500</span><span style="color:#b48ead;">u32</span><span style="color:#c0c5ce;">)).await;
+        }
+    });
+
+    executor::run_forever();
+}
+</span></code></pre><h2 id="what-s-it-do">What's it do?</h2>
+<p>It blinks two LEDs. One is on/off every second, the other is on/off every half second.</p>
+<p>The two calls to <code>spawn</code> are using my <em>executor</em> to start two async contexts. They don't
+do a dang thing until <code>executor::run_forever()</code> is called, which starts both.</p>
+<p>If we view them as two independent tasks, they first turn on their LED. Then they
+call an <em>async function</em> named <code>delay(...)</code> with the amount of time they want to wait.
+That call itself will return a future immediately, which is a pretty poor delay.
+But once we <code>.await</code> on that future, from each task's point-of-view, it's a blocking
+call for 1000 (or 500) milliseconds.</p>
+<p>Once the <code>.await</code> is satisfied, the task can carry on, toggling it's LED and doing
+the <code>delay(...)</code> dance again.</p>
+<p>Since the <code>.await</code> does not actually block the entire processor though, it allows
+the other task to keep churning, itself doing real work or possibly <code>.await</code>ing.</p>
+<div class="video >">
+  <iframe style="height: 480px; width: 100%;" frameborder="0" src="//player.vimeo.com/video/489065725" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+</div>
+<h2 id="how-s-it-different-from-a-non-async-delay">How's it different from a non-<code>async</code> delay?</h2>
+<p>First, this delay supports many individual delays using a single hardware timer.
+Additionally, the normal Embedded HAL <code>CountDown</code> timers may use the <code>nb</code> non-blocking
+crate, but they ultimately block when you wish to delay.</p>
+<p>When you have bit of code spinning in a loop checking to see if its delay has expired,
+you're preventing other code from doing real work. You're also actively using the
+processor, which may prevent some low-power modes. If you have a low-power timer
+available to you, there's a high chance that your MCU could go to sleep for 499 milliseconds,
+wake up to flip an LED, and then go back to sleep.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>Of course, you <em>can</em> write code that blinks two LEDs using interrupts and shared 
+resources, but at least to <em>my</em> eye, having self-contained tasks with ostensibly
+straight-line logic is easier to think about.</p>
+<p>In this implementation, I've glossed over a few facts. First, there <em>is</em> an 
+interrupt-handler (for <code>TIM15</code>) wired up in order for the shared <code>AsyncTimer</code>
+to know when some deadline has expired. Additionally, the executor I'm using
+currently supports exactly 8 tasks, and I've initialized it with 1kb of memory
+for storing the async continuation structures that Rust creates behind the
+scenes. </p>
+<p>Also, if you want to create something that is asynchronous, you take on the
+synchronization burden and end up writing implementations of <code>Future</code> which,
+while being straight-forward, is also non-trivial.  <em>Using</em> existing async 
+functionality is much easier.</p>
+<p>Another minor point is that async functions you've called generally won't <em>actually</em>
+attempt to make progress (in most cases) until you call <code>.await</code>. In the
+case of our <code>AsyncDelay</code> though, that's not completely true. Calling <code>delay(...)</code>
+registers a deadline, so it is &quot;working&quot; towards it.</p>
+<p>But in general, I find <code>async</code> embedded code to show much promise, and could
+ultimately form the basis for a reactive or actor-like framework for your small
+boards.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/rust-and-async' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="threads-and-async-await" href="https://blog.drogue.io/rust-and-async/#threads-and-async-await">Threads and async&#x2F;await</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="first-threads" href="https://blog.drogue.io/rust-and-async/#first-threads">First, threads...</a>
+                </li>
+                
+                <li>
+                  <a data-for="now-async" href="https://blog.drogue.io/rust-and-async/#now-async">Now, async...</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="is-it-async-turtles-all-the-way-down" href="https://blog.drogue.io/rust-and-async/#is-it-async-turtles-all-the-way-down">Is it async turtles all the way down?</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="executors" href="https://blog.drogue.io/rust-and-async/#executors">Executors</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="why-is-this-good-for-embedded" href="https://blog.drogue.io/rust-and-async/#why-is-this-good-for-embedded">Why is this good for embedded?</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="let-s-see-an-example" href="https://blog.drogue.io/rust-and-async/#let-s-see-an-example">Let&#x27;s see an example</a>
+              
+              <ul class="menu-list">
+                
+                <li>
+                  <a data-for="what-s-it-do" href="https://blog.drogue.io/rust-and-async/#what-s-it-do">What&#x27;s it do?</a>
+                </li>
+                
+                <li>
+                  <a data-for="how-s-it-different-from-a-non-async-delay" href="https://blog.drogue.io/rust-and-async/#how-s-it-different-from-a-non-async-delay">How&#x27;s it different from a non-async delay?</a>
+                </li>
+                
+              </ul>
+              
+            </li>
+            
+            <li>
+              <a data-for="conclusion" href="https://blog.drogue.io/rust-and-async/#conclusion">Conclusion</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

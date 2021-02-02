@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Creating an ESP programmer &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Creating an ESP-01 programmer in Rust, by bridging two UART interfaces on an STM32F723E-DISCOVERY board">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Creating an ESP programmer" />
+<meta name="twitter:description" content="Creating an ESP-01 programmer in Rust, by bridging two UART interfaces on an STM32F723E-DISCOVERY board">
+<meta name="twitter:image" content="https://blog.drogue.io/esp-programmer/esp.webp ">
+<meta name="twitter:image:alt" content="ESP-01 mounted on STM32F723E-DISCOVERY board">
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Creating an ESP programmer">
+<meta property="og:url" content="https://blog.drogue.io/esp-programmer">
+<meta property="og:description" content="Creating an ESP-01 programmer in Rust, by bridging two UART interfaces on an STM32F723E-DISCOVERY board">
+<meta property="og:image" content="https://blog.drogue.io/esp-programmer/esp.webp">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Creating an ESP programmer</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1047">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-09-18'>18 September 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;esp-programmer&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>Getting started with an <a href="https://en.wikipedia.org/wiki/ESP8266#Pinout_of_ESP-01">ESP-01</a> isn't one of the easiest
+things. At least if you are not used to embedded systems. It is a nice solution though to add Wi-Fi
+capabilities to an existing platform.</p>
+<span id="continue-reading"></span><h1 id="the-esp-01">The ESP-01</h1>
+<p>I started out with my <a href="https://www.st.com/en/evaluation-tools/32f723ediscovery.html">STM32F723E-DISCOVERY</a> board,
+and choose it simply because it provides a nice set of interfaces. Which is great for testing and, well, discovering.</p>
+<p>What it doesn't have, is on-board Wi-Fi, or any other kind of network support. Not ideal if you plan on doing IoT.</p>
+<p>However, brings a ready-to-plug ESP-01 port, which is mapped to an internal UART. That port is specifically designed
+for the ESP-01. It has a matching slot, with the correct pin assignment, the required 3.3V, and maps to UART5 on the
+board.</p>
+<figure>
+<picture>
+    <source type="image/webp" srcset="esp.webp">
+    <img src="esp.jpg" alt="ESP-01 on STM32F723E-DISCOVERY">
+</picture>
+</figure>
+<p>My naive idea, was to simply plug it in, and &quot;dial out&quot; to the internet with some
+<a href="https://www.espressif.com/sites/default/files/documentation/4a-esp8266_at_instruction_set_en.pdf">AT commands</a>. The
+ESP chips provide an out-of-the-box firmware, which offers you a set of &quot;AT commands&quot;, that control the Wi-Fi and
+TCP/IP stack, which is embedded in the chip. You only need some serial communication, and let the chip handle the more
+complex things.</p>
+<h1 id="firmware-updates">Firmware updates</h1>
+<p>Before ordering, I already read that the shipped firmware of some ESPs, is most likely extremely old. And indeed,
+that was the case for me as well. I had hoped for something more recent, but I had no luck.</p>
+<p>Playing with some NodeMCU like boards, which feature the same ESP8622 chip, I know that you can easily flash a new
+firmware using the <code>esptool.py</code> from the command line. All you need is a PC and a USB cable. The problem is, the ESP-01
+doesn't have a USB port. In the case of the NodeMCU, you have an UART interface built into the board, which connects
+the USB port with the ESP. On the USB host, you simply see it as a UART USB interface.</p>
+<p>As the ESP-01 requires 3.3V, instead of the 5V that most other UARTs require, you do need to come up with <a href="https://www.iot-experiments.com/flashing-esp8266-esp01/#onperfboard">some extra
+wiring</a>. There are a lot of tutorials on the net,
+which explain how to flash an ESP-01. I guess, the simplest solution is to buy and FTDI adapter, which supports 3.3V.
+However, even that still requires you to come up with a solution for triggering the programming mode of the ESP via
+the GPIO0 port.</p>
+<h1 id="the-solution">The solution</h1>
+<p>On the other side, right on my desk was the discovery board, which has support for the ESP-01 out of the box. It also
+has an internal &quot;virtual com port&quot;, which is connected through USB with the host over the ST-LINK port. On the board it
+is known as <code>USART6</code>, and on my Linux machine, it becomes <code>/dev/ttyACM0</code>.</p>
+<p>The only thing required was a &quot;proxy&quot;, which bridges the two serial ports. A few lines of Rust later, I came up with
+a rather simple loop, which looked something like this:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">loop </span><span style="color:#c0c5ce;">{
+   </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Ok(c) = rx_esp.</span><span style="color:#96b5b4;">read</span><span style="color:#c0c5ce;">() {
+      to_vcom.</span><span style="color:#96b5b4;">push</span><span style="color:#c0c5ce;">(c);
+   }
+   </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Ok(c) = rx_vcom.</span><span style="color:#96b5b4;">read</span><span style="color:#c0c5ce;">() {
+      to_esp.</span><span style="color:#96b5b4;">push</span><span style="color:#c0c5ce;">(c);
+   }
+   </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Some(to_esp.</span><span style="color:#96b5b4;">peek</span><span style="color:#c0c5ce;">()) {
+      </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Ok(_) = tx_esp.</span><span style="color:#96b5b4;">write</span><span style="color:#c0c5ce;">() {
+         to_esp.</span><span style="color:#96b5b4;">poll</span><span style="color:#c0c5ce;">();
+      }
+   }
+   </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Some(to_vcom.</span><span style="color:#96b5b4;">peek</span><span style="color:#c0c5ce;">()) {
+      </span><span style="color:#b48ead;">if let </span><span style="color:#c0c5ce;">Ok(_) = tx_vcom.</span><span style="color:#96b5b4;">write</span><span style="color:#c0c5ce;">() {
+         tx_vcom.</span><span style="color:#96b5b4;">poll</span><span style="color:#c0c5ce;">();
+      }
+   }
+}
+</span></code></pre>
+<p>To be fair, my code doesn't look as elegant as this. You can take a peek at
+<a href="https://github.com/ctron/embedded-serial-bridge">ctron/embedded-serial-bridge</a>. However, it isn't too difficult either.
+I think Rust helps you a lot to write readable code, even in the context of embedded devices. </p>
+<p>Plugging in the discovery board now provides a USB serial interface. Depending on the mode I select, the ESP gets
+booted either in <em>normal mode</em> or in <em>programming mode</em>. In the programming mode, I can use the <code>esptool</code> now to
+flash the ESP-01. Or recover from a bricked device. In normal mode, I can use <a href="https://en.wikipedia.org/wiki/Minicom">minicom</a>,
+to play with AT commands. </p>
+<h1 id="lessons-learned">Lessons learned</h1>
+<p>Was that really necessary? It was a good opportunity to learn about embedded and Rust. As mentioned before, I could
+have bought an FTDI adapter, and try to get away with that. On the other side, building that serial bridge with Rust
+and <a href="https://github.com/probe-rs/cargo-embed"><code>cargo embed</code></a>, was quite easy.</p>
+<p>A problem that I faced during development, was that I lost quite a number of characters at some point.
+My assumption was, that although I did not use DMA and interrupts, the loop should be fast enough to
+process a few characters.</p>
+<p>It took me a while until I figured out, that this was caused by the Rust debug code. The more complex my program got,
+the more characters I did loose. Building in release mode with <code>cargo embed --release</code> fixed the issue.</p>
+<h1 id="future-improvements">Future improvements</h1>
+<p>My itch is scratched. On the other side, I am pretty sure I will need to flash some ESP-01 in the future. So maybe
+I will make my own life easier and make use of the <em>user button</em> that the ESP has. It could be used top reset the ESP
+after flashing. Or switch the modes between programming and normal mode. The LEDs could be use, to show serial traffic,
+or in which mode the system is.</p>
+<p>It could also be fun, to port this to a different board. Right now the code is specifically written for the STM32F723IE.
+The Rust build support <em>features</em>, which allow you to do conditional compilation and dependencies. The good thing
+with Rust's conditional compilation is, that all the guarantees that Rust gives, you are still valid. So it should
+be possible to allow you to compile for a specific board, like this:</p>
+<pre style="background-color:#2b303b;">
+<code><span style="color:#c0c5ce;">cargo embed --feature &lt;your board&gt;
+</span></code></pre>
+<p>And maybe, if you have the some problem, this gives you a reason to try it out yourself.</p>
+<h1 id="see-also">See also</h1>
+<ul>
+<li>GitHub repository — https://github.com/ctron/embedded-serial-bridge</li>
+<li>Cargo embed — https://github.com/probe-rs/cargo-embed</li>
+<li>Rust/Cargo Features — https://doc.rust-lang.org/cargo/reference/features.html</li>
+</ul>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/esp-programmer' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="the-esp-01" href="https://blog.drogue.io/esp-programmer/#the-esp-01">The ESP-01</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="firmware-updates" href="https://blog.drogue.io/esp-programmer/#firmware-updates">Firmware updates</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="the-solution" href="https://blog.drogue.io/esp-programmer/#the-solution">The solution</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="lessons-learned" href="https://blog.drogue.io/esp-programmer/#lessons-learned">Lessons learned</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="future-improvements" href="https://blog.drogue.io/esp-programmer/#future-improvements">Future improvements</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="see-also" href="https://blog.drogue.io/esp-programmer/#see-also">See also</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

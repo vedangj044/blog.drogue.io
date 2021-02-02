@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Testing IoT services with Minikube, Knative and Rust &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="Posting data from an IoT device to a Knative service deployed on Minikube">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Testing IoT services with Minikube, Knative and Rust" />
+<meta name="twitter:description" content="Posting data from an IoT device to a Knative service deployed on Minikube">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Testing IoT services with Minikube, Knative and Rust">
+<meta property="og:url" content="https://blog.drogue.io/minikube-roundtrip">
+<meta property="og:description" content="Posting data from an IoT device to a Knative service deployed on Minikube">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Testing IoT services with Minikube, Knative and Rust</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>4 minute read</span>
+        <meta itemprop="wordCount" content="788">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-01'> 1 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jim Crossley</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;minikube-roundtrip&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p><a href="https://minikube.sigs.k8s.io/docs/">Minikube</a> is a convenient tool
+for developing cloud services on your laptop, but how can you access
+them from your IoT device? In this article, we'll walk through
+deploying the
+<a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud</a> project on
+minikube and then use some drogue crates to post data to its knative
+endpoint via an ESP8266 WiFi module.</p>
+<span id="continue-reading"></span><h1 id="tl-dr">tl;dr</h1>
+<p>We'll cover the gory details below, but the crux of the biscuit for
+accessing <em>any</em> knative service on minikube from a remote device is to
+first set up a port-forward on your laptop, and then override the
+<code>Host</code> header when connecting to that port from your device.</p>
+<p>On your laptop, forward HTTP requests on port 8080 to knative's
+ingress running on minikube...</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">kubectl port-forward --address 0.0.0.0 svc/kourier -n kourier-system 8080:80
+</span></code></pre>
+<p>On your device, connect to your laptop's IP address on port 8080, but
+set the HTTP <code>Host</code> header to match the URL of the knative endpoint...</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">kubectl get ksvc -n drogue-iot http-endpoint -o jsonpath=&#39;{.status.url}&#39;
+</span></code></pre>
+<p>It's this <code>Host</code> header that ensures your request is routed to the
+proper service.</p>
+<p>And now, as promised, the details...</p>
+<h1 id="configure-minikube">Configure Minikube</h1>
+<p>You're gonna need a lot of RAM! Like, at least 10 GB. And let's say
+double that amount of disk...</p>
+<p>Still reading? Great! </p>
+<p>The drogue-cloud repo is a bit of a playground. We include a lot of
+resource-hungry services such as <a href="https://knative.dev/">knative</a> --
+both <a href="https://github.com/knative/serving">serving</a> and
+<a href="https://github.com/knative/eventing">eventing</a> -- and
+<a href="https://strimzi.io/">strimzi</a>. </p>
+<p>Instructions for starting minikube with the required resources,
+versions, and addons are
+<a href="https://github.com/drogue-iot/drogue-cloud/blob/main/deploy/minikube.adoc">here</a>. Essentially,
+you'll run this:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">minikube start --cpus 4 --memory 10240 --disk-size 20gb --addons ingress
+</span></code></pre>
+<p>In addition, you'll need to fire up <a href="https://minikube.sigs.k8s.io/docs/commands/tunnel/">minikube
+tunnel</a> in a
+separate shell to enable <code>LoadBalancer</code> type services.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">minikube tunnel
+</span></code></pre><h1 id="deploy-drogue-cloud">Deploy drogue-cloud</h1>
+<p>With minikube up and running, installing drogue-cloud should be as simple as this: </p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">git clone https://github.com/drogue-iot/drogue-cloud
+cd drogue-cloud
+./hack/drogue.sh
+</span></code></pre>
+<p>If it fails, it's likely because it can't find <a href="https://github.com/drogue-iot/drogue-cloud/blob/main/deploy/README.adoc#pre-requisites">one of
+these</a>. You
+can safely restart it after installing the one it's complaining about
+as the <code>drogue.sh</code> script is idempotent.</p>
+<p>It will take a few minutes to finish. When it finally does, you should
+see output similar to this:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">==========================================================================================
+ Base:
+==========================================================================================
+
+SSO:
+  url:      http://172.17.0.3
+  user:     admin
+  password: admin123456
+
+Console:
+  url:      http://172.17.0.3:30046
+  user:     admin
+  password: admin123456
+
+------------------------------------------------------------------------------------------
+Examples
+------------------------------------------------------------------------------------------
+
+View the dashboard:
+---------------------
+
+* Login to Grafana:
+    url:      http://172.17.0.3:32656
+    username: admin
+    password: admin123456
+* Try this link: http://172.17.0.3:32656/d/YYGTNzdMk/
+* Or search for the &#39;Knative test&#39; dashboard
+
+Publish data:
+----------------
+
+At a shell prompt, try these commands:
+
+  http POST http://http-endpoint.drogue-iot.10.96.168.111.nip.io/publish/device_id/foo temp:=44
+  mqtt pub -v -h 172.17.0.3.nip.io -p 31677 -s --cafile tls.crt -t temp -m &#39;{&quot;temp&quot;:42}&#39; -V 3
+</span></code></pre>
+<p>This shows the URL's for the drogue-cloud services specific to your
+minikube. You can generate this output at any time with this script:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-shell" data-lang="shell"><span style="color:#c0c5ce;">./hack/status.sh
+</span></code></pre><h1 id="configure-your-device">Configure your device</h1>
+<p>That <code>http POST ...</code> example command near the end of the above output
+is what you'll use in your device code to set the <code>Host</code> header.</p>
+<p>An <a href="https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs">extremely rudimentary
+application</a>
+based on the <a href="http://rtic.rs">RTIC framework</a> demonstrates the posting
+of a single piece of data to the <code>http-endpoint</code> using the
+<a href="https://github.com/drogue-iot/drogue-esp8266">drogue_esp8266</a>,
+<a href="https://github.com/drogue-iot/drogue-network">drogue_network</a>, and
+<a href="https://github.com/drogue-iot/drogue-http-client">drogue_http_client</a>
+crates.</p>
+<p>Relevant sections of the code -- replicated below -- include
+<a href="https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L4-L8">configuring the
+app</a>
+for your local network and minikube, <a href="https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L101-L104">creating the correct IP
+address</a>,
+and finally the <a href="https://github.com/jcrossley3/stm32f401-esp8266/blob/0e97ed4c2d/src/main.rs#L121-L126">HTTP POST
+request</a>.</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">const </span><span style="color:#d08770;">HOST</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">str </span><span style="color:#c0c5ce;">= &quot;</span><span style="color:#a3be8c;">192.168.0.110</span><span style="color:#c0c5ce;">&quot;;    </span><span style="color:#65737e;">// laptop IP
+</span><span style="color:#b48ead;">const </span><span style="color:#d08770;">HOST_HEADER</span><span style="color:#c0c5ce;">: &amp;</span><span style="color:#b48ead;">str </span><span style="color:#c0c5ce;">= &quot;</span><span style="color:#a3be8c;">http-endpoint.drogue-iot.10.96.168.111.nip.io</span><span style="color:#c0c5ce;">&quot;;
+  ...
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> socket_addr = HostSocketAddr::new(
+    HostAddr::from_str(</span><span style="color:#d08770;">HOST</span><span style="color:#c0c5ce;">).</span><span style="color:#96b5b4;">unwrap</span><span style="color:#c0c5ce;">(),
+    </span><span style="color:#d08770;">8080</span><span style="color:#c0c5ce;">,
+);
+  ...
+</span><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> req = con
+    .</span><span style="color:#96b5b4;">post</span><span style="color:#c0c5ce;">(&quot;</span><span style="color:#a3be8c;">/publish/esp8266/dummy</span><span style="color:#c0c5ce;">&quot;)
+    .</span><span style="color:#96b5b4;">headers</span><span style="color:#c0c5ce;">(&amp;[(&quot;</span><span style="color:#a3be8c;">Host</span><span style="color:#c0c5ce;">&quot;, </span><span style="color:#d08770;">HOST_HEADER</span><span style="color:#c0c5ce;">),
+               (&quot;</span><span style="color:#a3be8c;">Content-Type</span><span style="color:#c0c5ce;">&quot;, &quot;</span><span style="color:#a3be8c;">text/json</span><span style="color:#c0c5ce;">&quot;)])
+    .</span><span style="color:#96b5b4;">handler</span><span style="color:#c0c5ce;">(handler)
+    .execute_with::&lt;_, U512&gt;(&amp;</span><span style="color:#b48ead;">mut</span><span style="color:#c0c5ce;"> tcp, Some(data.</span><span style="color:#96b5b4;">as_bytes</span><span style="color:#c0c5ce;">()));
+</span></code></pre>
+<p>Obviously, unless you happen to have an STM32F401 board connected to
+an ESP8266 module via USART6, <a href="https://github.com/jcrossley3/stm32f401-esp8266">this
+code</a> is
+not going to work out of the box.</p>
+<p>But hopefully we've at least shown it's possible to combine the
+conveniences of Minikube for your cloud services work with Rust for
+your IoT development.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/minikube-roundtrip' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="tl-dr" href="https://blog.drogue.io/minikube-roundtrip/#tl-dr">tl;dr</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="configure-minikube" href="https://blog.drogue.io/minikube-roundtrip/#configure-minikube">Configure Minikube</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="deploy-drogue-cloud" href="https://blog.drogue.io/minikube-roundtrip/#deploy-drogue-cloud">Deploy drogue-cloud</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="configure-your-device" href="https://blog.drogue.io/minikube-roundtrip/#configure-your-device">Configure your device</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

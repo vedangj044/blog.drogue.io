@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Rust Embedded Layer Cake &mdash; Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    <meta name="description" content="As noted in the first post, I&#x27;m working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. 
+">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@DrogueIoT" />
+<meta name="twitter:title" content="Rust Embedded Layer Cake" />
+<meta name="twitter:description" content="As noted in the first post, I&#x27;m working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. 
+">
+<meta name="twitter:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Drogue IoT">
+<meta property="og:title" content="Rust Embedded Layer Cake">
+<meta property="og:url" content="https://blog.drogue.io/rust-embedded-layer-cake">
+<meta property="og:description" content="As noted in the first post, I&#x27;m working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. 
+">
+<meta property="og:image" content='https://blog.drogue.io/default_social_image.png'>
+
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+
+<div class="container is-fluid">
+  <div class="columns">
+    <div class="column is-offset-one-quarter-fullhd is-half-fullhd is-two-thirds-tablet is-three-quarters-desktop is-full">
+      <article itemscope itemtype="http://schema.org/BlogPosting">
+
+        <section class="content">
+          <h1 class="title is-size-2" itemprop="name headline">Rust Embedded Layer Cake</h1>
+          <div class="subtitle has-text-grey">
+          
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1311">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-08-11'>11 August 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-embedded-layer-cake&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+
+</div>
+
+
+          </div>
+        </section>
+
+        <hr>
+
+        <section class="content post-content" itemprop="articleBody">
+          <p>As noted in the first post, I'm working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. </p>
+<span id="continue-reading"></span><h1 id="instruction-sets-processors">Instruction Sets &amp; Processors</h1>
+<p>That being said, there are <em>quite a few different processors</em> even within the 
+Cortex-M family.  They all have mostly similar instruction sets, which makes 
+the generation of the executable pretty straightforward (for the compiler).</p>
+<p>But each processor contains different amounts of flash memory (where the 
+program is stored) and different amounts of RAM (used during the execution
+of the program).</p>
+<p>The ARM processors are different than you might have experienced with the
+Intel and AMD processors, because ARM is <em>licensed intellectual property</em>
+where a multitude of manufacturers can create their own processor, mostly
+following ARM's specifications. </p>
+<h1 id="peripherals">Peripherals</h1>
+<p>One of the largest sources of variety is in the <em>peripherals</em> within the
+processor. With desktop machines, we think of peripherals as &quot;a display&quot;
+or &quot;an external harddrive&quot; or &quot;a mouse&quot;. Within an embedded processor,
+a perhipheral is lower-level, embodying things like <em>timers</em> and <em>SPI</em> busses
+and <em>serial port thingies</em>.</p>
+<p>Each of these peripherals is interacted with by code through one or more
+<em>registers</em>, which is a byte (or two or four) of memory within the processor.
+These registers get <em>memory mapped</em> into the normal RAM-addressable memory
+that code can operate upon.</p>
+<p>For instance, within the STM32F401 processor from STMicroelectronics,
+there are a few registers for configuring and interacting with the USART
+(a &quot;serial port&quot;). Some bits of the registers control the baud rate, stop-bits,
+and parity of the underlying serial bus. Other registers are used to transfer
+octets from your code to the serial bus and to receive octets from the serial bus
+into your code. Additional registers are used to communicate if errors have 
+occurred while attempting to move data across (overruns, parity errors, noise).</p>
+<p>The reference manuals for processors describe the memory location and semantics
+of each bit/byte of each register for each peripheral. </p>
+<p><img src="/images/usart-regs.png" alt="USART registers" /></p>
+<p>Working with memory addresses and bitwise manipulation of these registers
+would be... challenging.</p>
+<h1 id="peripheral-access-crates-pac">Peripheral Access Crates (PAC)</h1>
+<p>Thankfully, some producers of ARM Cortex-M chips also ship a related XML file
+called an SVD (System View Descriptor). These files take the prose information
+from the reference manuals and makes it machine-readable. Tooling in the Rust
+community, called <a href="https://crates.io/crates/svd2rust">svd2rust</a> can consume
+these files and produce Rust code so we can use friendly name to manipulate registers.
+The result of using <code>svd2rust</code> is what's called a <em>peripheral access crate</em>, or <em>PAC</em>.</p>
+<p>One example is the <a href="https://crates.io/crates/stm32f4">stm32f4</a> crate.</p>
+<p>Once you have a PAC, you can at least write slightly better-looking code, but
+you are still <em>thinking</em> in terms of registers, bits and bytes. A PAC doesn't quite
+get you up to the semantics of <em>a serial port thingy</em>.</p>
+<h1 id="hardware-abstraction-layer-hal">Hardware Abstraction Layer (HAL)</h1>
+<p>While different silicon manufacturers produce similar but different ARM Cortex-M
+chips, using possibly different registers to accomplish things, at the end of the day,
+many still have <em>serial port thingies</em> (e.g. a USART).</p>
+<p>To begin to bring commonality across the chips, there's a <em>hardware abstraction layer (HAL)</em>.
+The HAL is created in two parts. First is the common <a href="https://docs.rs/embedded-hal">embedded-hal</a>
+which defines abstractions such as how to <a href="https://docs.rs/embedded-hal/0.2.4/embedded_hal/serial/index.html"><em>read</em> or <em>write</em> to a serial port</a>.
+Note, it does not define an abstraction for <em>serial port</em> itself, since the configuration
+and setup of a serial port is still quite chip-specific. But assuming you've configured
+a port, <code>embedded-hal</code> gives us a common way to read octets or write octets (or words,
+or whatever size data the specific port supports).</p>
+<p>The <code>embedded-hal</code> is purely a crate of Rust <em>traits</em>, and by itself is not functional.</p>
+<p>Humans create a <em>HAL implementation</em> for a specific bit of silicon using the
+generated <em>PAC</em> in order to provide a friendly way of interacting with different chips.</p>
+<p>For instance, there's the <a href="https://crates.io/crates/stm32f4xx-hal">stm32f4xx-hal</a>
+HAL crate which has been lovingly hand-crafted, using the <a href="https://crates.io/crates/stm32f4">stm32f PAC</a>
+in order to safely configure and use a chip from the STM32F4 family of silicon.</p>
+<p>The HAL includes plenty of bits that don't map to the <code>embedded-hal</code> traits, because
+activities such as setting up the serial port thingy is outside of scope for <code>embedded-hal</code>,
+but it also does mix in the <code>embedded-hal</code> traits where the functionality overlaps.</p>
+<h1 id="safety">Safety</h1>
+<p>One benefit Rust HALs have over other HALs based on other languages is the safety
+that can be provided using <em>zero cost abstractions</em>.</p>
+<p>Take, for instance, on the STM32F401 chip, one of the serial port thingies (USART6) 
+can be connected to a couple of different sets of pins. Since each chip tends to ultimately
+have more peripherals than can be surfaced through physical pins, a lot of pins can
+perform one of several functions. </p>
+<p>In the case of USART6, the transmission line can be attached to pin <code>PA11</code> or <code>PC6</code>.
+<code>PC6</code> could alternatively be configured for usage with <code>i2c</code> or <code>SDIO</code>. Until you
+explicitly configure the pin for usage as the USART6 transmission line, the HAL
+will <em>not</em> allow you to use it to further configure the USART6 serial port thingy.</p>
+<p>In my case, I've wired up my serial port device to pins <code>PA11</code> for transmission (tx)
+and <code>PA12</code> for receiving (rx).</p>
+<p>First I get the <code>HAL</code> representation of the GPIO pins, the little bits of metal sticking
+out of my board:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> gpioa = device.</span><span style="color:#d08770;">GPIOA</span><span style="color:#c0c5ce;">.</span><span style="color:#96b5b4;">split</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Then I select off the two pins I need for my USART:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> pa11 = gpioa.pa11;
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> pa12 = gpioa.pa12;
+</span></code></pre>
+<p>At this point, <code>pa11</code> and <code>pa12</code> are of type <code>PA11&lt;Input&lt;Floating&gt;&gt;</code> and
+<code>PA12&lt;Input&lt;Floating&gt;&gt;</code> respectively. Two floating digital input pins is
+<em>not</em> sufficient for usage as a serial point. In their initial natural state,
+I could use them to sense voltage changes, as digital inputs, but I cannot
+harness the internal USART peripheral that may be attached to them.</p>
+<p>So next, I configure the processor to know I specifically want to use them for USART6 
+instead of any of the other usages they could have. The <code>into_alternative_af8()</code> is 
+how I tell the processor (through the PAC) that I intend to use them as USART6:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> tx_pin = pa11.</span><span style="color:#96b5b4;">into_alternate_af8</span><span style="color:#c0c5ce;">();
+</span><span style="color:#b48ead;">let</span><span style="color:#c0c5ce;"> rx_pin = pa12.</span><span style="color:#96b5b4;">into_alternate_af8</span><span style="color:#c0c5ce;">();
+</span></code></pre>
+<p>Behind the scenes, the HAL is using the PAC to twiddle the appropriate bits
+in the appropriate registers to configure the pointy bits of metal sticking
+out of the board and what the processor thinks I intend to do with them.</p>
+<p>Now, the types of <code>tx_pin</code> and <code>rx_pin</code> are <code>PA11&lt;Alternate&lt;AF8&gt;&gt;</code> and
+<code>&lt;PA12&lt;Alternate&lt;AF8&gt;&gt;</code> respectively. I can't use them a simple digital I/O
+pins now, because Rust has consumed the generic pins and returned me USART-configured
+pins.</p>
+<p>I can finally use the HAL method to configure my serial port thingy:</p>
+<pre style="background-color:#2b303b;">
+<code class="language-rust" data-lang="rust"><span style="color:#b48ead;">let mut</span><span style="color:#c0c5ce;"> serial = Serial::usart6(
+            usart6,
+            (tx_pin, rx_pin),
+            ... 
+            ...);
+</span></code></pre>
+<p>The <code>usart6(...)</code> function will <em>only</em> accept appropriate configured pins which
+are usable as USART6. The compiler will not let me use arbitrary pins, or even
+correct pins that haven't been fully configured.</p>
+<p>Now, though, our <code>serial</code> implements the <code>Read&lt;...&gt;</code> and <code>Write&lt;...&gt;</code> traits
+from <code>embedded-hal</code> and can be handed off to an actual device driver that
+is written purely from the point-of-view of <code>embedded-hal</code>. </p>
+<p>The device driver doesn't need to know which vendor's silicon I'm using, just that
+there's now an object that can be written to and read from.</p>
+<h1 id="finally">Finally...</h1>
+<p>Embedded coding is hard, especially when you're not stupendously experienced doing it.
+On the other hand, using Rust provides a nice set of abstractions and a <em>ton</em> of guardrails
+to prevent you from flying off the cliff of correct code.</p>
+
+        </section>
+
+        <section id="comments" class="content">
+
+          <hr>
+
+          <h2>Comments</h2>
+
+          <div id='discourse-comments'></div>
+
+          <script type="text/javascript">
+              DiscourseEmbed = { discourseUrl: 'https://discourse.drogue.io/',
+                  discourseEmbedUrl: 'https://blog.drogue.io/rust-embedded-layer-cake' };
+
+              (function() {
+                  var d = document.createElement('script'); d.type = 'text/javascript'; d.async = true;
+                  d.src = DiscourseEmbed.discourseUrl + 'javascripts/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(d);
+              })();
+          </script>
+        </section>
+
+      </article>
+
+    </div>
+
+    <aside class="column is-hidden-mobile is-one-third-tablet is-one-quarter-desktop mx-5">
+      <div class="box is-sticky">
+        <div class="title is-size-3"><a href="#">Table of contents</a></div>
+        <nav class="menu">
+          <ul class="menu-list">
+            
+            <li>
+              <a data-for="instruction-sets-processors" href="https://blog.drogue.io/rust-embedded-layer-cake/#instruction-sets-processors">Instruction Sets &amp; Processors</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="peripherals" href="https://blog.drogue.io/rust-embedded-layer-cake/#peripherals">Peripherals</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="peripheral-access-crates-pac" href="https://blog.drogue.io/rust-embedded-layer-cake/#peripheral-access-crates-pac">Peripheral Access Crates (PAC)</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="hardware-abstraction-layer-hal" href="https://blog.drogue.io/rust-embedded-layer-cake/#hardware-abstraction-layer-hal">Hardware Abstraction Layer (HAL)</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="safety" href="https://blog.drogue.io/rust-embedded-layer-cake/#safety">Safety</a>
+              
+            </li>
+            
+            <li>
+              <a data-for="finally" href="https://blog.drogue.io/rust-embedded-layer-cake/#finally">Finally...</a>
+              
+            </li>
+            
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>

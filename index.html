@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://blog.drogue.io/main.css">
+
+    <title>Drogue IoT</title>
+
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.drogue.io/rss.xml">
+    
+
+    
+    <style>
+        .hero-body {
+            padding: 0;
+        }
+        .header-image {
+            width: 100%;
+            max-width: unset;
+
+            height: auto;
+            min-height: 32px;
+            max-height: 33vh !important;
+
+            object-fit: contain;
+            object-position: left center;
+            background-color: #8cc73f;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="https://blog.drogue.io/favicon.svg">
+    
+
+    
+    <meta name="description" content="IoT &amp; Rust">
+    <meta name="og:description" content="IoT &amp; Rust">
+    <meta name="og:image" content="https://blog.drogue.io/default_social_image.png">
+    <meta name="twitter:description" content="IoT &amp; Rust">
+    <meta name="twitter:image" content="https://blog.drogue.io/default_social_image.png">
+    
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QVBDYPJX0S"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-QVBDYPJX0S', { 'anonymize_ip': true });
+    </script>
+  </head>
+
+<body>
+
+<section class="hero pb-5">
+  <div class="hero-body">
+    <a href="https://blog.drogue.io">
+      <img class="header-image" src="https://blog.drogue.io/header.svg" alt="Header image">
+    </a>
+  </div>
+</section>
+
+<section class="section">
+  
+  <div class="container is-fluid">
+    <div class="columns is-multiline">
+      <aside class="column is-one-quarter-fullhd">
+        <div class="is-sticky">
+          <h2 class="title is-2 is-block-fullhd is-skipped">Links</h2>
+          <ul class="link-list">
+            <li><a href="https:&#x2F;&#x2F;github.com&#x2F;drogue-iot" target="_blank">GitHub Organization</a></li>
+            <li><a href="https:&#x2F;&#x2F;matrix.to&#x2F;#&#x2F;#drogue-iot:matrix.org" target="_blank">Community Chat</a></li>
+            <li><a href="https:&#x2F;&#x2F;discourse.drogue.io" target="_blank">Forum</a></li>
+          </ul>
+        </div>
+      </aside>
+      <div class="column is-half-fullhd is-full">
+        <div class="posts">
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;introducing-drogue-device&#x2F;">
+                Introducing Drogue Device
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Trying to bring reusable and efficient components to embedded Rust has been a challenge for our team.
+We think we've started to make headway, and want to introduce the <code>Drogue Device</code> project.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>21 minute read</span>
+        <meta itemprop="wordCount" content="4089">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-02-02'> 2 February 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter and Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;introducing-drogue-device&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;introducing-drogue-device&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;coming-up-gsoc-2021&#x2F;">
+                Coming up: Google Summer of Code 2021
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Good news, everyone! <a href="https://summerofcode.withgoogle.com/">Google Summer of Code</a> 2021 is coming up. This gives you
+the chance to throw yourself at some horrifying tech problems, learn some new skills, and maybe get to know a few more
+memes. We are participating, how about you?</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>5 minute read</span>
+        <meta itemprop="wordCount" content="916">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-01-25'>25 January 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;coming-up-gsoc-2021&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;coming-up-gsoc-2021&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;command-your-devices&#x2F;">
+                Command your devices
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>So far when we talked about serverless IoT cloud we focused only on one way communication, devices sending <em>telemetry</em> data to the cloud.
+But in order to have a complete IoT solution, we need to be able to control our devices as well, by sending <em>commands</em> back to them.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1541">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-01-21'>21 January 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Dejan Bosanac</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;command-your-devices&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;command-your-devices&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;rust-and-lora&#x2F;">
+                Rust and LoRa
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>LoRa is a low power long range wireless protocol that operates in a lower frequency spectrum than WiFi, ZigBee and Bluetooth. This enables IoT use cases not possible with the shorter range technologies. And, you can use Rust!</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1512">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2021-01-13'>13 January 2021</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-lora&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;rust-and-lora&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;hey-rodney&#x2F;">
+                &quot;Hey Rodney, … restart console pods&quot;
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Pushing temperature readings in JSON structures to the cloud is fun, but more fun is to restart your pods by saying:
+&quot;Hey Rodney, …&quot;. It also is a nice demo, and a good test, to see what fails when your <code>Content-Type</code> is <code>audio/wav</code>
+instead of <code>application/json</code>.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1404">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-18'>18 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;hey-rodney&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;hey-rodney&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;more-async-and-pwm&#x2F;">
+                More Rust &amp; Async (and hand-rolled PWM)
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>If we start living the async lifestyle, we can potentially get more
+use out of our limited hardware resources.  Maybe not, but it's worth
+exploring. Let's explore.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1183">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-15'>15 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;more-async-and-pwm&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;more-async-and-pwm&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;rust-and-microbit&#x2F;">
+                Rust on the BBC micro:bit
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>The BBC micro:bit is a popular development kit often used to teach kids how fun programming can be. Lets see how we can hook it up to the cloud!</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1533">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-10'>10 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Ulf Lilleengen</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-microbit&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;rust-and-microbit&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;rust-and-async&#x2F;">
+                Rust and Async (on embedded devices)
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p><code>async</code>/<code>await</code> within Rust is a convenient way to gain parallelism,
+even on an embedded device where we ostensibly have exactly one userland
+thread by default.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>8 minute read</span>
+        <meta itemprop="wordCount" content="1410">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-09'> 9 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-and-async&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;rust-and-async&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;minikube-roundtrip&#x2F;">
+                Testing IoT services with Minikube, Knative and Rust
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p><a href="https://minikube.sigs.k8s.io/docs/">Minikube</a> is a convenient tool
+for developing cloud services on your laptop, but how can you access
+them from your IoT device? In this article, we'll walk through
+deploying the
+<a href="https://github.com/drogue-iot/drogue-cloud">drogue-cloud</a> project on
+minikube and then use some drogue crates to post data to its knative
+endpoint via an ESP8266 WiFi module.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>4 minute read</span>
+        <meta itemprop="wordCount" content="788">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-12-01'> 1 December 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jim Crossley</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;minikube-roundtrip&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;minikube-roundtrip&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;digital-twins&#x2F;">
+                Digital Twins, and how they can help
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Exchanging messages with devices is great. As I tried to explain in the last blog post about
+<a href="https://blog.drogue.io/the-cloud-side-of-things/">the cloud side of things</a>, having a modular system, and
+normalizing the transport protocol can make things a lot easier. However, exchanging messages is only the first
+step towards an IoT application.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>9 minute read</span>
+        <meta itemprop="wordCount" content="1625">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-11-24'>24 November 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;digital-twins&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;digital-twins&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;the-cloud-side-of-things&#x2F;">
+                The cloud side of things
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Up until now, we have focused on &quot;Rust on embedded devices&quot;, at least when it comes to writing blog posts. Let's
+change that.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1097">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-11-10'>10 November 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;the-cloud-side-of-things&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;the-cloud-side-of-things&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;meet-rodney&#x2F;">
+                Meet Rodney
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p><em>Non-technical post</em> -- Hey, we have a new logo!</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>1 minute read</span>
+        <meta itemprop="wordCount" content="176">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-20'>20 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;meet-rodney&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;meet-rodney&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;mpu-6050&#x2F;">
+                Motion &amp; MPU-6050
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>While the <em>S</em> in IoT stands for &quot;security&quot;, the <em>T</em> stands for &quot;things&quot;, and things move. 
+Wouldn't it be nice to know how they move, exactly?</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1059">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-19'>19 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;mpu-6050&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;mpu-6050&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;nom-parser&#x2F;">
+                Nom Parser
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Routinely we have to deal with recognizing patterns within text or byte streams. 
+While LL(k) and LALR are common types of parsers, the <a href="https://crates.io/crates/nom">nom crate</a> brings <a href="https://en.wikipedia.org/wiki/Parser_combinator">parser combinators</a> to the embedded Rust world.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1325">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-13'>13 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;nom-parser&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;nom-parser&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;eswifi&#x2F;">
+                eS-WiFi and SPI
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>There's a lot of variety in the embedded world. 
+While we've implemented the <a href="/wifi-offload/">ESP8266 WiFi-offload board over USART</a> last time, now we're doing the <a href="https://www.digikey.com/en/products/detail/inventek-systems/ISM43362-M3G-L44-E-C6-2-1-8/7070042">Inventek eS-WiFi</a> over the SPI bus.
+Let's explore some of the differences.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1120">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-12'>12 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;eswifi&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;eswifi&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;matter-of-time&#x2F;">
+                It&#x27;s a Matter of Time
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>In the embedded world, quite often you don't have a <em>wall clock</em> sort of clock. 
+You may have something that can reckon the passage of time, though. 
+The various current solutions for managing time within embedded Rust has yet to be completely abstracted.
+We leverage some up-and-coming libraries to help paper over the differences.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1311">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-10-05'> 5 October 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;matter-of-time&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;matter-of-time&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;esp-programmer&#x2F;">
+                Creating an ESP programmer
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Getting started with an <a href="https://en.wikipedia.org/wiki/ESP8266#Pinout_of_ESP-01">ESP-01</a> isn't one of the easiest
+things. At least if you are not used to embedded systems. It is a nice solution though to add Wi-Fi
+capabilities to an existing platform.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>6 minute read</span>
+        <meta itemprop="wordCount" content="1047">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-09-18'>18 September 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Jens Reimann</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;esp-programmer&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;esp-programmer&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;yak-hole-of-tls&#x2F;">
+                Down the Yak Hole of TLS
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>We've recently gotten TLS functional for embedded systems in Rust. 
+TLS (Transport Layer Security) is one of the backbones to secure communications over TCP/IP, helping protect data in-flight between two parties.
+There's a lot of moving parts involved in bringing easy-to-use functional cryptography to small 32-bit ARM Cortex-M devices. 
+Let's dive in, shall we?</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>10 minute read</span>
+        <meta itemprop="wordCount" content="1801">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-09-18'>18 September 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;yak-hole-of-tls&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;yak-hole-of-tls&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;wifi-offload&#x2F;">
+                WiFi Offloading
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>My recent work has been around Cortex-M embedded development using Rust and <a href="https://rtic.rs/">RTIC</a>.
+I'm using a handy little development board in the form of the <a href="https://www.digikey.com/product-detail/en/stmicroelectronics/NUCLEO-F401RE/497-14360-ND/4695525">STM Nucleo-F401RE</a>.
+Unfortunately, it's handiness stops as soon as you want to communicate with TCP over WiFi, because it lacks WiFi.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>11 minute read</span>
+        <meta itemprop="wordCount" content="2072">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-08-24'>24 August 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;wifi-offload&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;wifi-offload&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;rust-embedded-layer-cake&#x2F;">
+                Rust Embedded Layer Cake
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>As noted in the first post, I'm working towards doing more IoT using Rust
+in an embedded ARM Cortex-M world.  Thankfully, the Rust compiler leverages
+LLVM and can target quite a few different processors. </p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1311">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-08-11'>11 August 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;rust-embedded-layer-cake&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;rust-embedded-layer-cake&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+          <div class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+              <div class="content">
+              <h2 class="title is-2 is-spaced" itemprop="name headline">
+                <a href="&#x2F;first-steps-in-iot&#x2F;">
+                First Steps in IoT
+                </a>
+              </h2>
+              </div>
+
+            <div class="content">
+              <div itemprop="articleSummary">
+                <p>Welcome to the <em>Drogue IoT</em> blog. This is where I intend to document 
+my progress through discovering how to build enterprise-grade IoT device
+systems using Rust and ARM Cortex-M MCUs.</p>
+
+              </div>
+            </div>
+
+            <div class="content has-text-grey">
+              
+
+<div class="post-info">
+
+    <div class="post-info-item">
+        <span>7 minute read</span>
+        <meta itemprop="wordCount" content="1220">
+    </div>
+
+    
+        <div class="post-info-item">
+            <span itemprop="datePublished" content='2020-08-03'> 3 August 2020</span>
+        </div>
+    
+
+    
+
+    
+        <div class="post-info-item">
+        <span>by 
+
+<span itemprop="author" itemscope itemtype="http://schema.org/Person">
+<span itemprop="name">Bob McWhirter</span>
+</span>
+
+</span>
+        </div>
+    
+
+    <div class="post-info-item">
+        <span><a href="&#x2F;first-steps-in-iot&#x2F;#comments">comments</a></span>
+    </div>
+
+    
+        <div class="post-info-item">
+        <a href="&#x2F;first-steps-in-iot&#x2F;">Read&nbsp;more&nbsp;…</a>
+        </div>
+    
+
+</div>
+
+
+            </div>
+
+          </div>
+          <hr/>
+
+          
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      <strong>Drogue IoT</strong>
+  </div>
+</footer>
+
+<script src="https://blog.drogue.io/default.js"></script>
+
+</body>
+
+</html>
